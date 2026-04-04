@@ -1,7 +1,7 @@
 import axios from 'axios'
 
 const api = axios.create({
-  baseURL: import.meta.env.VITE_API_URL || 'http://localhost:8000',
+  baseURL: import.meta.env.VITE_API_URL || 'http://localhost:8080',
   timeout: 30000,
   headers: { 'Content-Type': 'application/json' },
 })
@@ -50,8 +50,44 @@ const mockRules = [
 
 let nextId = 4
 
+let cachedBackendRules = []
+
 // Flag para usar mock ou API real
 const USE_MOCK = true
+// Mesmo com mock ativo, tenta buscar listagem do backend e adapta para o formato atual.
+const USE_BACKEND_LIST_WHEN_AVAILABLE = true
+
+const fallbackMonthByBrandCode = (codMarca) => {
+  const month = ((Number(codMarca) || 1) % 12) + 1
+  return `2026-${String(month).padStart(2, '0')}`
+}
+
+const mapBackendRuleToFrontend = (item, index = 0) => {
+  const comissao = Number(((item.pctComiss || 0) * 100).toFixed(2))
+  const marca = item.descrMarca || `Marca ${item.codMarca ?? '-'}`
+  const cargo = item.descriCargo || `Cargo ${item.codCargo ?? '-'}`
+  const data = fallbackMonthByBrandCode(item.codMarca)
+
+  return {
+    id: item.id || `backend-${item.codMarca}-${item.codCargo}-${index}`,
+    codMarca: item.codMarca,
+    codCargo: item.codCargo,
+    marca,
+    cargo,
+    comissao,
+    data,
+    texto_original: `${cargo} da marca ${marca} recebem ${comissao}% de comissão a partir de ${data}`,
+    explicacao: `Regra carregada do backend (commission-rates). Campos textuais foram preenchidos de forma ficcional para compatibilidade temporária do frontend.`,
+    created_at: new Date().toISOString()
+  }
+}
+
+const applyLocalFilters = (rules, params = {}) => {
+  let filtered = [...rules]
+  if (params.marca) filtered = filtered.filter(r => r.marca.toLowerCase().includes(String(params.marca).toLowerCase()))
+  if (params.cargo) filtered = filtered.filter(r => r.cargo.toLowerCase().includes(String(params.cargo).toLowerCase()))
+  return filtered
+}
 
 export const rulesApi = {
   async interpret(text) {
@@ -81,17 +117,32 @@ export const rulesApi = {
   },
 
   async getAll(params = {}) {
+    if (USE_BACKEND_LIST_WHEN_AVAILABLE) {
+      try {
+        const res = await api.get('/api/rules/commission-rates')
+        const backendRules = (Array.isArray(res.data) ? res.data : []).map((item, index) => mapBackendRuleToFrontend(item, index))
+        const rules = applyLocalFilters(backendRules, params)
+        cachedBackendRules = rules
+        return { data: { rules, total: rules.length, page: 1, per_page: 10 } }
+      } catch (error) {
+        console.warn('Backend indisponivel para listagem. Usando mock.', error?.message)
+      }
+    }
+
     if (USE_MOCK) {
       await new Promise(r => setTimeout(r, 600))
-      let rules = [...mockRules]
-      if (params.marca) rules = rules.filter(r => r.marca.toLowerCase().includes(params.marca.toLowerCase()))
-      if (params.cargo) rules = rules.filter(r => r.cargo.toLowerCase().includes(params.cargo.toLowerCase()))
+      let rules = applyLocalFilters(mockRules, params)
       return { data: { rules, total: rules.length, page: 1, per_page: 10 } }
     }
     return api.get('/rules', { params })
   },
 
   async getById(id) {
+    const cached = cachedBackendRules.find(r => String(r.id) === String(id))
+    if (cached) {
+      return { data: cached }
+    }
+
     if (USE_MOCK) {
       await new Promise(r => setTimeout(r, 400))
       const rule = mockRules.find(r => r.id === Number(id))
