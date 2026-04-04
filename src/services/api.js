@@ -22,6 +22,7 @@ const parseEnvBoolean = (value, defaultValue = false) => {
 // Flags de ambiente para alternar entre mock e backend.
 const USE_MOCK = parseEnvBoolean(import.meta.env.VITE_USE_MOCK, true)
 const USE_BACKEND = parseEnvBoolean(import.meta.env.VITE_USE_BACKEND, true)
+const USE_AI = parseEnvBoolean(import.meta.env.VITE_USE_AI, true)
 
 // Mock data para desenvolvimento
 const mockRules = [
@@ -117,6 +118,18 @@ const extractYearMonthFromText = (text) => {
 
 export const rulesApi = {
   async interpret(text) {
+    if (USE_AI) {
+      try {
+        const response = await api.post('/rules/interpret', { texto: text })
+        return response
+      } catch (error) {
+        console.warn('Backend indisponivel para interpretacao. Usando mock.', error?.message)
+        if (!USE_MOCK) {
+          throw error
+        }
+      }
+    }
+
     if (USE_MOCK) {
       await new Promise(r => setTimeout(r, 1500)) // simula delay da IA
       return {
@@ -129,17 +142,31 @@ export const rulesApi = {
         }
       }
     }
-    return api.post('/rules/interpret', { texto: text })
+
+    throw new Error('Interpretacao de regra indisponivel: IA e mock estao desativados.')
   },
 
   async save(rule) {
+    if (USE_BACKEND) {
+      try {
+        const response = await api.post('/rules', rule)
+        return response
+      } catch (error) {
+        console.warn('Backend indisponivel para salvamento. Usando mock.', error?.message)
+        if (!USE_MOCK) {
+          throw error
+        }
+      }
+    }
+
     if (USE_MOCK) {
       await new Promise(r => setTimeout(r, 800))
       const newRule = { ...rule, id: nextId++, created_at: new Date().toISOString() }
       mockRules.push(newRule)
       return { data: newRule }
     }
-    return api.post('/rules', rule)
+
+    throw new Error('Salvamento de regra indisponivel: backend e mock estao desativados.')
   },
 
   async getAll(params = {}) {
@@ -171,13 +198,26 @@ export const rulesApi = {
       return { data: cached }
     }
 
+    if (USE_BACKEND) {
+      try {
+        const response = await api.get(`/rules/${id}`)
+        return response
+      } catch (error) {
+        console.warn('Backend indisponivel para busca por ID. Usando mock.', error?.message)
+        if (!USE_MOCK) {
+          throw error
+        }
+      }
+    }
+
     if (USE_MOCK) {
       await new Promise(r => setTimeout(r, 400))
       const rule = mockRules.find(r => r.id === Number(id))
       if (!rule) throw new Error('Regra não encontrada')
       return { data: rule }
     }
-    return api.get(`/rules/${id}`)
+
+    throw new Error('Busca de regra indisponivel: backend e mock estao desativados.')
   },
 
   async delete(id) {
