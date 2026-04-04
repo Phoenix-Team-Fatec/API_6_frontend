@@ -57,28 +57,18 @@ const USE_MOCK = true
 // Mesmo com mock ativo, tenta buscar listagem do backend e adapta para o formato atual.
 const USE_BACKEND_LIST_WHEN_AVAILABLE = true
 
-const fallbackMonthByBrandCode = (codMarca) => {
-  const month = ((Number(codMarca) || 1) % 12) + 1
-  return `2026-${String(month).padStart(2, '0')}`
-}
-
-const mapBackendRuleToFrontend = (item, index = 0) => {
-  const comissao = Number(((item.pctComiss || 0) * 100).toFixed(2))
-  const marca = item.descrMarca || `Marca ${item.codMarca ?? '-'}`
-  const cargo = item.descriCargo || `Cargo ${item.codCargo ?? '-'}`
-  const data = fallbackMonthByBrandCode(item.codMarca)
-
+const mapBackendRuleToFrontend = (item) => {
   return {
-    id: item.id || `backend-${item.codMarca}-${item.codCargo}-${index}`,
+    id: item.id,
     codMarca: item.codMarca,
     codCargo: item.codCargo,
-    marca,
-    cargo,
-    comissao,
-    data,
-    texto_original: `${cargo} da marca ${marca} recebem ${comissao}% de comissão a partir de ${data}`,
-    explicacao: `Regra carregada do backend (commission-rates). Campos textuais foram preenchidos de forma ficcional para compatibilidade temporária do frontend.`,
-    created_at: new Date().toISOString()
+    marca: item.descrMarca,
+    cargo: item.descriCargo,
+    comissao: Number((item.pctComiss * 100).toFixed(2)),
+    data: item.data.substring(0, 7),
+    texto_original: item.textoOriginal,
+    explicacao: item.explicacao,
+    created_at: item.createdAt
   }
 }
 
@@ -120,7 +110,7 @@ export const rulesApi = {
     if (USE_BACKEND_LIST_WHEN_AVAILABLE) {
       try {
         const res = await api.get('/api/rules/commission-rates')
-        const backendRules = (Array.isArray(res.data) ? res.data : []).map((item, index) => mapBackendRuleToFrontend(item, index))
+        const backendRules = (Array.isArray(res.data) ? res.data : []).map(item => mapBackendRuleToFrontend(item))
         const rules = applyLocalFilters(backendRules, params)
         cachedBackendRules = rules
         return { data: { rules, total: rules.length, page: 1, per_page: 10 } }
