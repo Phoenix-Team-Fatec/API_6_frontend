@@ -81,6 +81,24 @@ export const useRuleStore = defineStore('rule', () => {
     }
   }
 
+  async function deleteRule(id) {
+    loading.value = true
+    error.value = null
+    try {
+      await rulesApi.delete(id)
+      rulesList.value = rulesList.value.filter(rule => String(rule.id) !== String(id))
+      total.value = Math.max(0, total.value - 1)
+      if (currentRule.value && String(currentRule.value.id) === String(id)) {
+        currentRule.value = null
+      }
+    } catch (err) {
+      error.value = 'Erro ao excluir a regra.'
+      throw err
+    } finally {
+      loading.value = false
+    }
+  }
+
   function resetInterpretation() {
     interpretedRule.value = null
     explanation.value = ''
@@ -103,6 +121,7 @@ export const useRuleStore = defineStore('rule', () => {
     saveRule,
     fetchRules,
     fetchRuleById,
+    deleteRule,
     resetInterpretation,
   }
 })

@@ -63,7 +63,7 @@
       </div>
 
       <!-- Table -->
-      <RulesTable v-else :rules="paginatedRules" @select="goToDetail" @sort="onSort" />
+      <RulesTable v-else :rules="paginatedRules" @select="goToDetail" @sort="onSort" @delete="requestDelete" />
 
       <!-- Pagination -->
       <div v-if="store.rulesList.length > 0" class="px-5 py-3 border-t border-slate-100 flex items-center justify-between bg-slate-50/50">
@@ -76,6 +76,18 @@
       </div>
     </div>
   </div>
+
+  <ConfirmationModal
+    :show="showDeleteModal"
+    title="Excluir regra"
+    :message="deleteConfirmationMessage"
+    confirm-text="Excluir"
+    cancel-text="Cancelar"
+    variant="danger"
+    :loading="deletingRule"
+    @cancel="closeDeleteModal"
+    @confirm="confirmDelete"
+  />
 </template>
 
 <script setup>
@@ -84,11 +96,15 @@ import { useRouter } from 'vue-router'
 import { useRuleStore } from '../stores/ruleStore'
 import RulesTable from '../components/table/RulesTable.vue'
 import FiltersBar from '../components/table/FiltersBar.vue'
+import ConfirmationModal from '../components/common/ConfirmationModal.vue'
 
 const router = useRouter()
 const store = useRuleStore()
 const currentPage = ref(1)
 const perPage = 10
+const showDeleteModal = ref(false)
+const deletingRule = ref(false)
+const ruleToDelete = ref(null)
 
 const totalPages = computed(() => Math.max(1, Math.ceil(store.rulesList.length / perPage)))
 
@@ -134,4 +150,34 @@ const goNext = () => {
 
 const onSort = (key) => console.log('Sort:', key)
 const goToDetail = (rule) => router.push(`/rules/${rule.id}`)
+
+const deleteConfirmationMessage = computed(() => {
+  if (!ruleToDelete.value) return 'Tem certeza que deseja excluir esta regra?'
+  return `Tem certeza que deseja excluir a regra de ${ruleToDelete.value.cargo} da marca ${ruleToDelete.value.marca}?\n\nEssa ação não pode ser desfeita.`
+})
+
+const requestDelete = (rule) => {
+  ruleToDelete.value = rule
+  showDeleteModal.value = true
+}
+
+const closeDeleteModal = () => {
+  if (deletingRule.value) return
+  showDeleteModal.value = false
+  ruleToDelete.value = null
+}
+
+const confirmDelete = async () => {
+  if (!ruleToDelete.value) return
+
+  deletingRule.value = true
+  try {
+    await store.deleteRule(ruleToDelete.value.id)
+    showDeleteModal.value = false
+    ruleToDelete.value = null
+    await store.fetchRules()
+  } finally {
+    deletingRule.value = false
+  }
+}
 </script>

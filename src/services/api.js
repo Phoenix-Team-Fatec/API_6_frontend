@@ -14,6 +14,15 @@ api.interceptors.response.use(
   }
 )
 
+const parseEnvBoolean = (value, defaultValue = false) => {
+  if (value === undefined || value === null || value === '') return defaultValue
+  return ['true', '1', 'yes', 'on'].includes(String(value).toLowerCase())
+}
+
+// Flags de ambiente para alternar entre mock e backend.
+const USE_MOCK = parseEnvBoolean(import.meta.env.VITE_USE_MOCK, true)
+const USE_BACKEND = parseEnvBoolean(import.meta.env.VITE_USE_BACKEND, true)
+
 // Mock data para desenvolvimento
 const mockRules = [
   {
@@ -52,11 +61,6 @@ let nextId = 4
 
 let cachedBackendRules = []
 
-// Flag para usar mock ou API real
-const USE_MOCK = true
-// Mesmo com mock ativo, tenta buscar listagem do backend e adapta para o formato atual.
-const USE_BACKEND_LIST_WHEN_AVAILABLE = true
-
 const mapBackendRuleToFrontend = (item) => {
   return {
     id: item.id,
@@ -79,6 +83,38 @@ const applyLocalFilters = (rules, params = {}) => {
   return filtered
 }
 
+const extractYearMonthFromText = (text) => {
+  const normalizedText = String(text || '')
+    .toLowerCase()
+    .normalize('NFD')
+    .replace(/[\u0300-\u036f]/g, '')
+
+  const monthMap = {
+    janeiro: '01',
+    fevereiro: '02',
+    marco: '03',
+    abril: '04',
+    maio: '05',
+    junho: '06',
+    julho: '07',
+    agosto: '08',
+    setembro: '09',
+    outubro: '10',
+    novembro: '11',
+    dezembro: '12',
+  }
+
+  const match = normalizedText.match(/(janeiro|fevereiro|marco|abril|maio|junho|julho|agosto|setembro|outubro|novembro|dezembro)\s+de\s+(\d{4})/)
+
+  if (!match) {
+    const now = new Date()
+    return `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}`
+  }
+
+  const [, monthName, year] = match
+  return `${year}-${monthMap[monthName]}`
+}
+
 export const rulesApi = {
   async interpret(text) {
     if (USE_MOCK) {
@@ -88,7 +124,7 @@ export const rulesApi = {
           marca: text.match(/nike/i) ? "Nike" : text.match(/adidas/i) ? "Adidas" : text.match(/puma/i) ? "Puma" : "Marca Identificada",
           cargo: text.match(/gerente/i) ? "Gerente" : text.match(/representante/i) ? "Representante" : "Vendedor",
           comissao: parseFloat(text.match(/(\d+(?:\.\d+)?)\s*%/)?.[1] || "5"),
-          data: text.match(/janeiro/i) ? "2026-01" : text.match(/fevereiro/i) ? "2026-02" : text.match(/março/i) ? "2026-03" : "2026-03",
+          data: extractYearMonthFromText(text),
           explicacao: `A IA analisou o texto "${text.substring(0, 50)}..." e identificou os seguintes campos:\n\n• **Marca**: Identificada pelo nome da empresa mencionada no contexto da frase.\n• **Cargo**: Inferido pelo papel profissional descrito (vendedor, gerente, etc).\n• **Comissão**: Extraída do percentual numérico seguido do símbolo "%".\n• **Data**: Normalizada a partir da referência temporal mencionada no texto.`
         }
       }
@@ -107,7 +143,7 @@ export const rulesApi = {
   },
 
   async getAll(params = {}) {
-    if (USE_BACKEND_LIST_WHEN_AVAILABLE) {
+    if (USE_BACKEND) {
       try {
         const res = await api.get('/api/rules/commission-rates')
         const backendRules = (Array.isArray(res.data) ? res.data : []).map(item => mapBackendRuleToFrontend(item))
@@ -116,6 +152,7 @@ export const rulesApi = {
         return { data: { rules, total: rules.length, page: 1, per_page: 10 } }
       } catch (error) {
         console.warn('Backend indisponivel para listagem. Usando mock.', error?.message)
+        if (!USE_MOCK) throw error
       }
     }
 
@@ -124,7 +161,8 @@ export const rulesApi = {
       let rules = applyLocalFilters(mockRules, params)
       return { data: { rules, total: rules.length, page: 1, per_page: 10 } }
     }
-    return api.get('/rules', { params })
+
+    throw new Error('Listagem de regras indisponivel: backend e mock estao desativados.')
   },
 
   async getById(id) {
@@ -140,6 +178,32 @@ export const rulesApi = {
       return { data: rule }
     }
     return api.get(`/rules/${id}`)
+  },
+
+  async delete(id) {
+    if (USE_BACKEND) {
+      try {
+        const response = await api.delete(`/api/rules/${id}`)
+        cachedBackendRules = cachedBackendRules.filter(r => String(r.id) !== String(id))
+        return response
+      } catch (error) {
+        console.warn('Backend indisponivel para exclusão. Usando mock.', error?.message)
+        if (!USE_MOCK) {
+          throw error
+        }
+      }
+    }
+
+    if (USE_MOCK) {
+      await new Promise(r => setTimeout(r, 400))
+      const ruleIndex = mockRules.findIndex(r => String(r.id) === String(id))
+      if (ruleIndex === -1) throw new Error('Regra não encontrada')
+      mockRules.splice(ruleIndex, 1)
+      cachedBackendRules = cachedBackendRules.filter(r => String(r.id) !== String(id))
+      return { data: { success: true } }
+    }
+
+    throw new Error('Exclusao de regra indisponivel: backend e mock estao desativados.')
   }
 }
 
