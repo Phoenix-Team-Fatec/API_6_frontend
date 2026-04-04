@@ -63,15 +63,15 @@
       </div>
 
       <!-- Table -->
-      <RulesTable v-else :rules="store.rulesList" @select="goToDetail" @sort="onSort" />
+      <RulesTable v-else :rules="paginatedRules" @select="goToDetail" @sort="onSort" />
 
       <!-- Pagination -->
       <div v-if="store.rulesList.length > 0" class="px-5 py-3 border-t border-slate-100 flex items-center justify-between bg-slate-50/50">
-        <p class="text-xs text-slate-400">Exibindo <span class="font-semibold text-slate-600">{{ store.rulesList.length }}</span> de <span class="font-semibold text-slate-600">{{ store.total }}</span> regras</p>
+        <p class="text-xs text-slate-400">Exibindo <span class="font-semibold text-slate-600">{{ startItem }}</span>-<span class="font-semibold text-slate-600">{{ endItem }}</span> de <span class="font-semibold text-slate-600">{{ store.total }}</span> regras</p>
         <div class="flex items-center gap-1">
-          <button class="btn-ghost btn-sm opacity-40 cursor-not-allowed" disabled>← Anterior</button>
-          <button class="px-3 py-1.5 text-xs font-semibold bg-primary-500 text-white rounded-lg">1</button>
-          <button class="btn-ghost btn-sm opacity-40 cursor-not-allowed" disabled>Próximo →</button>
+          <button class="btn-ghost btn-sm" :class="{ 'opacity-40 cursor-not-allowed': !canGoPrevious }" :disabled="!canGoPrevious" @click="goPrevious">← Anterior</button>
+          <button class="px-3 py-1.5 text-xs font-semibold bg-primary-500 text-white rounded-lg">{{ currentPage }}</button>
+          <button class="btn-ghost btn-sm" :class="{ 'opacity-40 cursor-not-allowed': !canGoNext }" :disabled="!canGoNext" @click="goNext">Próximo →</button>
         </div>
       </div>
     </div>
@@ -79,7 +79,7 @@
 </template>
 
 <script setup>
-import { onMounted, computed } from 'vue'
+import { onMounted, computed, ref, watch } from 'vue'
 import { useRouter } from 'vue-router'
 import { useRuleStore } from '../stores/ruleStore'
 import RulesTable from '../components/table/RulesTable.vue'
@@ -87,6 +87,27 @@ import FiltersBar from '../components/table/FiltersBar.vue'
 
 const router = useRouter()
 const store = useRuleStore()
+const currentPage = ref(1)
+const perPage = 10
+
+const totalPages = computed(() => Math.max(1, Math.ceil(store.rulesList.length / perPage)))
+
+const paginatedRules = computed(() => {
+  const start = (currentPage.value - 1) * perPage
+  return store.rulesList.slice(start, start + perPage)
+})
+
+const canGoPrevious = computed(() => currentPage.value > 1)
+const canGoNext = computed(() => currentPage.value < totalPages.value)
+
+const startItem = computed(() => (store.rulesList.length ? (currentPage.value - 1) * perPage + 1 : 0))
+const endItem = computed(() => Math.min(currentPage.value * perPage, store.rulesList.length))
+
+watch(() => store.rulesList.length, () => {
+  if (currentPage.value > totalPages.value) {
+    currentPage.value = totalPages.value
+  }
+})
 
 const stats = computed(() => [
   { label: 'Total de Regras', value: store.total, iconBg: 'bg-primary-50', iconColor: 'text-primary-600', icon: 'M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2', sub: null },
@@ -99,7 +120,16 @@ onMounted(() => store.fetchRules())
 
 const onFiltersChange = (filters) => {
   store.filters = filters
+  currentPage.value = 1
   store.fetchRules()
+}
+
+const goPrevious = () => {
+  if (canGoPrevious.value) currentPage.value -= 1
+}
+
+const goNext = () => {
+  if (canGoNext.value) currentPage.value += 1
 }
 
 const onSort = (key) => console.log('Sort:', key)
