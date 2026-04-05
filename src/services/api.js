@@ -34,7 +34,8 @@ const mockRules = [
     comissao: 5,
     data: "2026-03",
     explicacao: "A IA identificou 'Nike' como marca pelo contexto da frase. 'Vendedores' foi mapeado para o cargo 'Vendedor'. O percentual '5%' foi extraído diretamente. A data 'março de 2026' foi normalizada para o formato 2026-03.",
-    created_at: "2026-03-01T10:00:00Z"
+    created_at: "2026-03-01T10:00:00Z",
+    isVigente: true
   },
   {
     id: 2,
@@ -44,7 +45,8 @@ const mockRules = [
     comissao: 8,
     data: "2026-01",
     explicacao: "A IA identificou 'Adidas' como marca. 'Gerentes' foi mapeado para 'Gerente'. O percentual '8%' e a data 'janeiro de 2026' foram extraídos e normalizados.",
-    created_at: "2026-03-10T14:30:00Z"
+    created_at: "2026-03-10T14:30:00Z",
+    isVigente: false
   },
   {
     id: 3,
@@ -54,7 +56,8 @@ const mockRules = [
     comissao: 6,
     data: "2026-02",
     explicacao: "Identificado 'Puma' como marca, 'Representantes' como cargo, '6%' como percentual de comissão e 'fevereiro de 2026' normalizado para 2026-02.",
-    created_at: "2026-03-15T09:15:00Z"
+    created_at: "2026-03-15T09:15:00Z",
+    isVigente: true
   }
 ]
 
@@ -73,7 +76,8 @@ const mapBackendRuleToFrontend = (item) => {
     data: item.data.substring(0, 7),
     texto_original: item.textoOriginal,
     explicacao: item.explicacao,
-    created_at: item.createdAt
+    created_at: item.createdAt,
+    isVigente: item.isVigente ?? true
   }
 }
 
@@ -81,6 +85,8 @@ const applyLocalFilters = (rules, params = {}) => {
   let filtered = [...rules]
   if (params.marca) filtered = filtered.filter(r => r.marca.toLowerCase().includes(String(params.marca).toLowerCase()))
   if (params.cargo) filtered = filtered.filter(r => r.cargo.toLowerCase().includes(String(params.cargo).toLowerCase()))
+  if (params.isVigente === 'true' || params.isVigente === true) filtered = filtered.filter(r => r.isVigente === true)
+  if (params.isVigente === 'false' || params.isVigente === false) filtered = filtered.filter(r => r.isVigente === false)
   return filtered
 }
 
@@ -172,7 +178,11 @@ export const rulesApi = {
   async getAll(params = {}) {
     if (USE_BACKEND) {
       try {
-        const res = await api.get('/api/rules/commission-rates')
+        const backendParams = {}
+        if (params.isVigente === 'true' || params.isVigente === true) backendParams.isVigente = true
+        if (params.isVigente === 'false' || params.isVigente === false) backendParams.isVigente = false
+
+        const res = await api.get('/api/rules/commission-rates', { params: backendParams })
         const backendRules = (Array.isArray(res.data) ? res.data : []).map(item => mapBackendRuleToFrontend(item))
         const rules = applyLocalFilters(backendRules, params)
         cachedBackendRules = rules

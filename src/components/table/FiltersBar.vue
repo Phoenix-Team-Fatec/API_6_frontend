@@ -20,6 +20,33 @@
         @input="emitFilters"
       />
     </div>
+    <div>
+      <label class="block text-xs font-medium text-gray-500 mb-1">Vigência</label>
+      <div class="flex items-center gap-2">
+        <button
+          :class="[
+            'px-4 py-2 text-sm font-medium rounded-lg transition-all duration-200',
+            localFilters.isVigente === 'true'
+              ? 'bg-emerald-500 text-white shadow-md'
+              : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
+          ]"
+          @click="toggleVigente('true')"
+        >
+          ON
+        </button>
+        <button
+          :class="[
+            'px-4 py-2 text-sm font-medium rounded-lg transition-all duration-200',
+            localFilters.isVigente === 'false'
+              ? 'bg-red-500 text-white shadow-md'
+              : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
+          ]"
+          @click="toggleVigente('false')"
+        >
+          OFF
+        </button>
+      </div>
+    </div>
     <button
       v-if="hasActiveFilters"
       class="px-3 py-2 text-sm text-gray-500 hover:text-gray-700 hover:bg-gray-100 rounded-lg transition-colors flex items-center space-x-1"
@@ -38,14 +65,19 @@ import { ref, computed } from 'vue'
 
 const emit = defineEmits(['update:filters'])
 
-const localFilters = ref({ marca: '', cargo: '' })
+const localFilters = ref({ marca: '', cargo: '', isVigente: 'true' })
 
 const hasActiveFilters = computed(() => localFilters.value.marca || localFilters.value.cargo)
 
 const emitFilters = () => emit('update:filters', { ...localFilters.value })
 
 const clearFilters = () => {
-  localFilters.value = { marca: '', cargo: '' }
+  localFilters.value = { marca: '', cargo: '', isVigente: 'true' }
+  emitFilters()
+}
+
+const toggleVigente = (value) => {
+  localFilters.value.isVigente = value
   emitFilters()
 }
 </script>

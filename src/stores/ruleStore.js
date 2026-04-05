@@ -11,7 +11,7 @@ export const useRuleStore = defineStore('rule', () => {
   const loading = ref(false)
   const error = ref(null)
   const total = ref(0)
-  const filters = ref({ marca: '', cargo: '', data_inicio: '', data_fim: '' })
+  const filters = ref({ marca: '', cargo: '', isVigente: '', data_inicio: '', data_fim: '' })
 
   const hasInterpretedRule = computed(() => !!interpretedRule.value)
 
