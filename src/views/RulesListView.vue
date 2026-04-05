@@ -153,7 +153,7 @@ const goToDetail = (rule) => router.push(`/rules/${rule.id}`)
 
 const deleteConfirmationMessage = computed(() => {
   if (!ruleToDelete.value) return 'Tem certeza que deseja excluir esta regra?'
-  return `Tem certeza que deseja excluir a regra de ${ruleToDelete.value.cargo} da marca ${ruleToDelete.value.marca}?\n\nEssa ação não pode ser desfeita.`
+  return `Tem certeza que deseja excluir a regra de ${ruleToDelete.value.cargo} da marca ${ruleToDelete.value.marca}?\n`
 })
 
 const requestDelete = (rule) => {
