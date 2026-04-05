@@ -40,6 +40,7 @@
                 class="text-gray-400 hover:text-primary-600 transition-colors p-1 rounded"
                 @click="emit('select', rule)"
                 aria-label="Ver detalhes"
+                title="Visualizar"
               >
                 <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                   <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7" />
@@ -49,6 +50,7 @@
                 class="text-gray-400 hover:text-blue-600 transition-colors p-1 rounded"
                 @click="emit('edit', rule)"
                 aria-label="Editar regra"
+                title="Editar"
               >
                 <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                   <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" />
@@ -63,6 +65,7 @@
                 ]"
                 @click="emit('toggleVigente', rule)"
                 :aria-label="rule.isVigente ? 'Desativar regra' : 'Ativar regra'"
+                :title="rule.isVigente ? 'Desativar' : 'Ativar'"
               >
                   <svg class="w-4 h-4" fill="currentColor" viewBox="0 0 24 24">
                   <path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm-2 15l-5-5 1.41-1.41L10 14.17l7.59-7.59L19 8l-9 9z"/>
@@ -72,6 +75,7 @@
                 class="text-gray-400 hover:text-red-600 transition-colors p-1 rounded"
                 @click="emit('delete', rule)"
                 aria-label="Excluir regra"
+                title="Deletar"
               >
                 <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                   <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3m-4 0h14" />
