@@ -9,8 +9,8 @@
           </svg>
         </RouterLink>
         <div>
-          <h1 class="page-title">Nova Regra de Negócio</h1>
-          <p class="page-subtitle">Descreva a regra em linguagem natural e a IA irá interpretá-la</p>
+          <h1 class="page-title">{{ store.isEditing ? 'Editar Regra de Negócio' : 'Nova Regra de Negócio' }}</h1>
+          <p class="page-subtitle">{{ store.isEditing ? 'Ajuste o texto da regra e avance para confirmar a atualização' : 'Descreva a regra em linguagem natural e a IA irá interpretá-la' }}</p>
         </div>
       </div>
 
@@ -127,7 +127,7 @@
         <div v-if="store.interpretedRule" class="mt-4 pt-4 border-t border-gray-100 space-y-3">
           <AIExplanationBox :explanation="store.explanation" />
           <BaseButton variant="primary" class="w-full" @click="goToConfirm">
-            Revisar e Confirmar
+            {{ store.isEditing ? 'Revisar Atualização' : 'Revisar e Confirmar' }}
             <svg class="w-4 h-4 ml-2" fill="none" viewBox="0 0 24 24" stroke="currentColor">
               <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7" />
             </svg>
@@ -140,7 +140,7 @@
 
 <script setup>
 import { ref } from 'vue'
-import { useRouter } from 'vue-router'
+import { useRoute, useRouter } from 'vue-router'
 import { useRuleStore } from '../stores/ruleStore'
 import BaseCard from '../components/common/BaseCard.vue'
 import BaseButton from '../components/common/BaseButton.vue'
@@ -148,7 +148,12 @@ import RulePreview from '../components/preview/RulePreview.vue'
 import AIExplanationBox from '../components/ai/AIExplanationBox.vue'
 
 const router = useRouter()
+const route = useRoute()
 const store = useRuleStore()
+
+if (route.query.mode === 'new') {
+  store.resetInterpretation()
+}
 
 const ruleText = ref(store.currentRuleText || '')
 
@@ -183,6 +188,9 @@ const clearText = () => {
 }
 
 const goToConfirm = () => {
-  router.push('/rules/confirm')
+  router.push({
+    path: '/rules/confirm',
+    query: store.isEditing ? { mode: 'edit', id: String(store.editingRuleId) } : {},
+  })
 }
 </script>

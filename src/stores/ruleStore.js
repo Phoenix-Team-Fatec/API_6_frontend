@@ -6,6 +6,7 @@ export const useRuleStore = defineStore('rule', () => {
   const currentRuleText = ref('')
   const interpretedRule = ref(null)
   const explanation = ref('')
+  const editingRuleId = ref(null)
   const rulesList = ref([])
   const currentRule = ref(null)
   const loading = ref(false)
@@ -14,6 +15,7 @@ export const useRuleStore = defineStore('rule', () => {
   const filters = ref({ marca: '', cargo: '', isVigente: '', data_inicio: '', data_fim: '' })
 
   const hasInterpretedRule = computed(() => !!interpretedRule.value)
+  const isEditing = computed(() => editingRuleId.value !== null)
 
   async function interpretRule(text) {
     loading.value = true
@@ -48,19 +50,62 @@ export const useRuleStore = defineStore('rule', () => {
         data: mergedRule.data,
         textoOriginal: currentRuleText.value,
         explicacao: explanation.value || mergedRule.explicacao || '',
+        isVigente: mergedRule.isVigente,
       }
 
-      const res = await rulesApi.save(payload)
+      const res = isEditing.value
+        ? await rulesApi.update(editingRuleId.value, payload)
+        : await rulesApi.save(payload)
+
+      const savedRule = {
+        ...mergedRule,
+        ...(res.data || {}),
+        id: res.data?.id ?? editingRuleId.value,
+      }
+
+      rulesList.value = isEditing.value
+        ? rulesList.value.map(rule => (String(rule.id) === String(savedRule.id) ? { ...rule, ...savedRule } : rule))
+        : [savedRule, ...rulesList.value]
+
+      if (!isEditing.value) {
+        total.value += 1
+      }
+
       interpretedRule.value = null
       currentRuleText.value = ''
       explanation.value = ''
-      return res.data
+      editingRuleId.value = null
+      return savedRule
     } catch (err) {
-      error.value = 'Erro ao salvar a regra.'
+      error.value = isEditing.value ? 'Erro ao atualizar a regra.' : 'Erro ao salvar a regra.'
       throw err
     } finally {
       loading.value = false
     }
+  }
+
+  function startEditingRule(rule) {
+    if (!rule || !rule.id) return
+    editingRuleId.value = rule.id
+    currentRuleText.value = rule.texto_original || ''
+    explanation.value = rule.explicacao || ''
+    interpretedRule.value = {
+      id: rule.id,
+      codMarca: rule.codMarca,
+      descrMarca: rule.descrMarca || rule.marca,
+      marca: rule.marca,
+      codCargo: rule.codCargo,
+      descriCargo: rule.descriCargo || rule.cargo,
+      cargo: rule.cargo,
+      comissao: rule.comissao,
+      data: rule.data,
+      explicacao: rule.explicacao || '',
+      isVigente: rule.isVigente,
+    }
+  }
+
+  function clearEditingRule() {
+    editingRuleId.value = null
   }
 
   async function fetchRules(params = {}) {
@@ -157,6 +202,7 @@ export const useRuleStore = defineStore('rule', () => {
     interpretedRule.value = null
     explanation.value = ''
     currentRuleText.value = ''
+    editingRuleId.value = null
     error.value = null
   }
 
@@ -164,6 +210,7 @@ export const useRuleStore = defineStore('rule', () => {
     currentRuleText,
     interpretedRule,
     explanation,
+    editingRuleId,
     rulesList,
     currentRule,
     loading,
@@ -171,8 +218,11 @@ export const useRuleStore = defineStore('rule', () => {
     total,
     filters,
     hasInterpretedRule,
+    isEditing,
     interpretRule,
     saveRule,
+    startEditingRule,
+    clearEditingRule,
     fetchRules,
     fetchRuleById,
     deleteRule,

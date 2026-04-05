@@ -9,8 +9,8 @@
           </svg>
         </RouterLink>
         <div>
-          <h1 class="page-title">Confirmar Regra</h1>
-          <p class="page-subtitle">Revise os dados interpretados antes de salvar</p>
+          <h1 class="page-title">{{ store.isEditing ? 'Atualizar Regra' : 'Confirmar Regra' }}</h1>
+          <p class="page-subtitle">{{ store.isEditing ? 'Revise os dados antes de confirmar a atualização' : 'Revise os dados interpretados antes de salvar' }}</p>
         </div>
       </div>
 
@@ -41,7 +41,7 @@
         </svg>
       </div>
       <p class="text-slate-500 mb-4">Nenhuma regra para confirmar.</p>
-      <RouterLink to="/rules/new">
+      <RouterLink to="/rules/new?mode=new" @click="store.resetInterpretation()">
         <button class="btn-primary">Criar Nova Regra</button>
       </RouterLink>
     </div>
@@ -113,7 +113,7 @@
 
         <!-- Actions -->
         <div class="flex gap-3">
-          <RouterLink to="/rules/new" class="flex-1">
+          <RouterLink :to="editTextLink" class="flex-1">
             <button class="btn-secondary w-full">
               <svg class="w-4 h-4 mr-2" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" />
@@ -133,7 +133,7 @@
             <svg v-else class="w-4 h-4 mr-2" fill="none" viewBox="0 0 24 24" stroke="currentColor">
               <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7" />
             </svg>
-            {{ store.loading ? 'Salvando...' : 'Aprovar e Salvar' }}
+            {{ store.loading ? (store.isEditing ? 'Atualizando...' : 'Salvando...') : (store.isEditing ? 'Aprovar e Atualizar' : 'Aprovar e Salvar') }}
           </button>
         </div>
       </div>
@@ -172,11 +172,12 @@
 </template>
 
 <script setup>
-import { ref, watch, computed } from 'vue'
-import { useRouter } from 'vue-router'
+import { ref, watch, computed, onMounted } from 'vue'
+import { useRoute, useRouter } from 'vue-router'
 import { useRuleStore } from '../stores/ruleStore'
 
 const router = useRouter()
+const route = useRoute()
 const store = useRuleStore()
 
 const editedRule = ref({ ...store.interpretedRule })
@@ -198,6 +199,23 @@ const formattedExplanation = computed(() => {
   return (store.explanation || '')
     .replace(/\*\*(.*?)\*\*/g, '<strong>$1</strong>')
     .replace(/\n/g, '<br />')
+})
+
+const editTextLink = computed(() => {
+  if (store.isEditing) return '/rules/new?mode=edit'
+  return '/rules/new'
+})
+
+onMounted(async () => {
+  if (store.interpretedRule) return
+  if (route.query.mode !== 'edit' || !route.query.id) return
+
+  try {
+    await store.fetchRuleById(route.query.id)
+    if (store.currentRule) {
+      store.startEditingRule(store.currentRule)
+    }
+  } catch {}
 })
 
 const approve = async () => {

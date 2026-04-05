@@ -6,7 +6,7 @@
         <h1 class="page-title">Regras de Negócio</h1>
         <p class="page-subtitle">Gerencie e monitore todas as regras cadastradas</p>
       </div>
-      <RouterLink to="/rules/new">
+      <RouterLink to="/rules/new?mode=new" @click="store.resetInterpretation()">
         <button class="btn-primary">
           <svg class="w-4 h-4 mr-2" fill="none" viewBox="0 0 24 24" stroke="currentColor">
             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4" />
@@ -57,13 +57,13 @@
         </div>
         <h3 class="text-base font-semibold text-slate-700 mb-1">Nenhuma regra encontrada</h3>
         <p class="text-sm text-slate-400 mb-5">Crie sua primeira regra com auxílio da IA</p>
-        <RouterLink to="/rules/new">
+        <RouterLink to="/rules/new?mode=new" @click="store.resetInterpretation()">
           <button class="btn-primary">Criar Primeira Regra</button>
         </RouterLink>
       </div>
 
       <!-- Table -->
-      <RulesTable v-else :rules="paginatedRules" @select="goToDetail" @sort="onSort" @delete="requestDelete" @toggleVigente="requestToggleVigente" />
+      <RulesTable v-else :rules="paginatedRules" @select="goToDetail" @sort="onSort" @delete="requestDelete" @toggleVigente="requestToggleVigente" @edit="requestEdit" />
 
       <!-- Pagination -->
       <div v-if="store.rulesList.length > 0" class="px-5 py-3 border-t border-slate-100 flex items-center justify-between bg-slate-50/50">
@@ -219,6 +219,20 @@ const vigenteConfirmationMessage = computed(() => {
 const requestToggleVigente = (rule) => {
   ruleToToggleVigente.value = rule
   showVigenteModal.value = true
+}
+
+const requestEdit = async (rule) => {
+  try {
+    await store.fetchRuleById(rule.id)
+    store.startEditingRule(store.currentRule || rule)
+  } catch {
+    store.startEditingRule(rule)
+  }
+
+  router.push({
+    path: '/rules/confirm',
+    query: { mode: 'edit', id: String(rule.id) },
+  })
 }
 
 const closeVigenteModal = () => {

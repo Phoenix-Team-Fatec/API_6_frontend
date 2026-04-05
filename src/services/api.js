@@ -72,11 +72,14 @@ const mapBackendRuleToFrontend = (item) => {
     codCargo: item.codCargo,
     marca: item.descrMarca,
     cargo: item.descriCargo,
-    comissao: Number((item.pctComiss * 100).toFixed(2)),
-    data: item.data.substring(0, 7),
+    comissao: Number((Number(item.pctComiss || 0) * 100).toFixed(2)),
+    data: item.data ? item.data.substring(0, 7) : '',
     texto_original: item.textoOriginal,
     explicacao: item.explicacao,
     created_at: item.createdAt,
+    updated_at: item.updatedAt,
+    versao: item.versao,
+    versoesAnteriores: item.versoesAnteriores,
     isVigente: item.isVigente ?? true
   }
 }
@@ -173,6 +176,54 @@ export const rulesApi = {
     }
 
     throw new Error('Salvamento de regra indisponivel: backend e mock estao desativados.')
+  },
+
+  async update(id, ruleData) {
+    if (USE_BACKEND) {
+      try {
+        const response = await api.put(`/api/rules/${id}`, ruleData)
+        const hasBackendPayload = response?.data && typeof response.data === 'object' && response.data.id !== undefined
+        const updatedRule = hasBackendPayload
+          ? mapBackendRuleToFrontend(response.data)
+          : { id: Number(id), ...ruleData }
+        cachedBackendRules = cachedBackendRules.map(r =>
+          String(r.id) === String(id) ? { ...r, ...updatedRule } : r
+        )
+        return { data: updatedRule }
+      } catch (error) {
+        console.warn('Backend indisponivel para atualização. Usando mock.', error?.message)
+        if (!USE_MOCK) {
+          throw error
+        }
+      }
+    }
+
+    if (USE_MOCK) {
+      await new Promise(r => setTimeout(r, 500))
+      const rule = mockRules.find(r => String(r.id) === String(id))
+      if (!rule) throw new Error('Regra não encontrada')
+
+      if (ruleData.codMarca !== undefined) rule.codMarca = ruleData.codMarca
+      if (ruleData.descrMarca !== undefined) rule.marca = ruleData.descrMarca
+      if (ruleData.codCargo !== undefined) rule.codCargo = ruleData.codCargo
+      if (ruleData.descriCargo !== undefined) rule.cargo = ruleData.descriCargo
+      if (ruleData.pctComiss !== undefined) rule.comissao = Number((Number(ruleData.pctComiss) * 100).toFixed(2))
+      if (ruleData.data !== undefined) rule.data = ruleData.data
+      if (ruleData.textoOriginal !== undefined) rule.texto_original = ruleData.textoOriginal
+      if (ruleData.explicacao !== undefined) rule.explicacao = ruleData.explicacao
+      if (ruleData.isVigente !== undefined) rule.isVigente = ruleData.isVigente
+
+      rule.updated_at = new Date().toISOString()
+      rule.versao = (rule.versao || 1) + 1
+
+      const updated = { ...rule }
+      cachedBackendRules = cachedBackendRules.map(r =>
+        String(r.id) === String(id) ? { ...r, ...updated } : r
+      )
+      return { data: updated }
+    }
+
+    throw new Error('Atualizacao de regra indisponivel: backend e mock estao desativados.')
   },
 
   async getAll(params = {}) {
