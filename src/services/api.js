@@ -35,6 +35,19 @@ const mockRules = [
     data: "2026-03",
     explicacao: "A IA identificou 'Nike' como marca pelo contexto da frase. 'Vendedores' foi mapeado para o cargo 'Vendedor'. O percentual '5%' foi extraído diretamente. A data 'março de 2026' foi normalizada para o formato 2026-03.",
     created_at: "2026-03-01T10:00:00Z",
+    updated_at: "2026-03-02T10:00:00Z",
+    versao: 2,
+    versoesAnteriores: [
+      {
+        marca: "Nike",
+        cargo: "Vendedor",
+        comissao: 4.5,
+        data: "2026-03",
+        texto_original: "Vendedores da marca Nike recebem 4,5% de comissão a partir de março de 2026",
+        explicacao: "Versão anterior da regra antes do reajuste para 5%.",
+        isVigente: true,
+      }
+    ],
     isVigente: true
   },
   {
@@ -46,6 +59,9 @@ const mockRules = [
     data: "2026-01",
     explicacao: "A IA identificou 'Adidas' como marca. 'Gerentes' foi mapeado para 'Gerente'. O percentual '8%' e a data 'janeiro de 2026' foram extraídos e normalizados.",
     created_at: "2026-03-10T14:30:00Z",
+    updated_at: "2026-03-10T14:30:00Z",
+    versao: 1,
+    versoesAnteriores: [],
     isVigente: false
   },
   {
@@ -57,6 +73,9 @@ const mockRules = [
     data: "2026-02",
     explicacao: "Identificado 'Puma' como marca, 'Representantes' como cargo, '6%' como percentual de comissão e 'fevereiro de 2026' normalizado para 2026-02.",
     created_at: "2026-03-15T09:15:00Z",
+    updated_at: "2026-03-15T09:15:00Z",
+    versao: 1,
+    versoesAnteriores: [],
     isVigente: true
   }
 ]
@@ -244,7 +263,8 @@ export const rulesApi = {
 
     if (USE_MOCK) {
       await new Promise(r => setTimeout(r, 800))
-      const newRule = { ...rule, id: nextId++, created_at: new Date().toISOString() }
+      const now = new Date().toISOString()
+      const newRule = { ...rule, id: nextId++, created_at: now, updated_at: now, versao: 1, versoesAnteriores: [] }
       mockRules.push(newRule)
       return { data: newRule }
     }
@@ -276,6 +296,18 @@ export const rulesApi = {
       await new Promise(r => setTimeout(r, 500))
       const rule = mockRules.find(r => String(r.id) === String(id))
       if (!rule) throw new Error('Regra não encontrada')
+
+      const previousSnapshot = {
+        marca: rule.marca,
+        cargo: rule.cargo,
+        comissao: rule.comissao,
+        data: rule.data,
+        texto_original: rule.texto_original,
+        explicacao: rule.explicacao,
+        isVigente: rule.isVigente,
+      }
+
+      rule.versoesAnteriores = Array.isArray(rule.versoesAnteriores) ? [...rule.versoesAnteriores, previousSnapshot] : [previousSnapshot]
 
       if (ruleData.codMarca !== undefined) rule.codMarca = ruleData.codMarca
       if (ruleData.descrMarca !== undefined) rule.marca = ruleData.descrMarca
@@ -449,6 +481,51 @@ export const rulesApi = {
     }
 
     throw new Error('Ativacao de regra indisponivel: backend e mock estao desativados.')
+  },
+
+  async rollback(id) {
+    if (USE_BACKEND) {
+      try {
+        await api.post(`/api/rules/${id}/rollback`)
+        const refreshed = await api.get(`/api/rules/${id}`)
+        return { data: mapBackendRuleToFrontend(refreshed.data) }
+      } catch (error) {
+        console.warn('Backend indisponivel para rollback. Usando mock.', error?.message)
+        if (!USE_MOCK) {
+          throw error
+        }
+      }
+    }
+
+    if (USE_MOCK) {
+      await new Promise(r => setTimeout(r, 400))
+      const rule = mockRules.find(r => String(r.id) === String(id))
+      if (!rule) throw new Error('Regra não encontrada')
+
+      if (!Array.isArray(rule.versoesAnteriores) || rule.versoesAnteriores.length === 0) {
+        return { data: { ...rule } }
+      }
+
+      const previousSnapshot = rule.versoesAnteriores[rule.versoesAnteriores.length - 1]
+      rule.marca = previousSnapshot.marca ?? rule.marca
+      rule.cargo = previousSnapshot.cargo ?? rule.cargo
+      rule.comissao = previousSnapshot.comissao ?? rule.comissao
+      rule.data = previousSnapshot.data ?? rule.data
+      rule.texto_original = previousSnapshot.texto_original ?? rule.texto_original
+      rule.explicacao = previousSnapshot.explicacao ?? rule.explicacao
+      rule.isVigente = previousSnapshot.isVigente ?? rule.isVigente
+      rule.versoesAnteriores = rule.versoesAnteriores.slice(0, -1)
+      rule.versao = Math.max(1, (rule.versao || 1) - 1)
+      rule.updated_at = new Date().toISOString()
+
+      const updated = { ...rule }
+      cachedBackendRules = cachedBackendRules.map(r =>
+        String(r.id) === String(id) ? updated : r
+      )
+      return { data: updated }
+    }
+
+    throw new Error('Rollback de regra indisponivel: backend e mock estao desativados.')
   }
 }
 

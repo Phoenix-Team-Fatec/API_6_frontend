@@ -198,6 +198,42 @@ export const useRuleStore = defineStore('rule', () => {
     }
   }
 
+  async function rollbackRule(id) {
+    loading.value = true
+    error.value = null
+    try {
+      const res = await rulesApi.rollback(id)
+      const existingRule = rulesList.value.find(rule => String(rule.id) === String(id)) || currentRule.value || {}
+      const updatedRule = { ...existingRule, ...(res.data || {}) }
+      rulesList.value = rulesList.value.map(rule =>
+        String(rule.id) === String(id) ? updatedRule : rule
+      )
+      if (currentRule.value && String(currentRule.value.id) === String(id)) {
+        currentRule.value = updatedRule
+      }
+      if (isEditing.value && String(editingRuleId.value) === String(id)) {
+        interpretedRule.value = {
+          ...interpretedRule.value,
+          ...updatedRule,
+          marca: updatedRule.marca,
+          cargo: updatedRule.cargo,
+          comissao: updatedRule.comissao,
+          data: updatedRule.data,
+          explicacao: updatedRule.explicacao,
+          isVigente: updatedRule.isVigente,
+        }
+        currentRuleText.value = updatedRule.texto_original || currentRuleText.value
+        explanation.value = updatedRule.explicacao || explanation.value
+      }
+      return updatedRule
+    } catch (err) {
+      error.value = 'Erro ao realizar rollback da regra.'
+      throw err
+    } finally {
+      loading.value = false
+    }
+  }
+
   function resetInterpretation() {
     interpretedRule.value = null
     explanation.value = ''
@@ -228,6 +264,7 @@ export const useRuleStore = defineStore('rule', () => {
     deleteRule,
     deactivateRule,
     activateRule,
+    rollbackRule,
     resetInterpretation,
   }
 })
