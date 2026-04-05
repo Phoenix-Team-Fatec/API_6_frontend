@@ -1,0 +1,63 @@
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap');
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer base {
+  *, *::before, *::after { box-sizing: border-box; }
+  html { scroll-behavior: smooth; }
+  body { @apply bg-slate-50 text-slate-900 font-sans antialiased; }
+  ::-webkit-scrollbar { width: 6px; height: 6px; }
+  ::-webkit-scrollbar-track { @apply bg-transparent; }
+  ::-webkit-scrollbar-thumb { @apply bg-slate-300 rounded-full; }
+  ::-webkit-scrollbar-thumb:hover { @apply bg-slate-400; }
+}
+
+@layer components {
+  /* Buttons */
+  .btn { @apply inline-flex items-center justify-center font-medium rounded-xl transition-all duration-200 focus:outline-none focus:ring-2 focus:ring-offset-2 disabled:opacity-50 disabled:cursor-not-allowed select-none; }
+  .btn-primary { @apply btn bg-gradient-primary text-white shadow-glow-sm hover:shadow-glow hover:scale-[1.02] active:scale-[0.98] focus:ring-primary-500 px-5 py-2.5 text-sm; }
+  .btn-secondary { @apply btn bg-white text-slate-700 border border-slate-200 hover:bg-slate-50 hover:border-slate-300 shadow-card hover:shadow-card-hover focus:ring-slate-300 px-5 py-2.5 text-sm; }
+  .btn-ghost { @apply btn text-slate-600 hover:text-slate-900 hover:bg-slate-100 focus:ring-slate-300 px-4 py-2 text-sm; }
+  .btn-danger { @apply btn bg-red-500 text-white hover:bg-red-600 shadow-sm focus:ring-red-500 px-5 py-2.5 text-sm; }
+  .btn-lg { @apply px-6 py-3 text-base; }
+  .btn-sm { @apply px-3 py-1.5 text-xs; }
+  .btn-icon { @apply btn p-2 rounded-lg; }
+
+  /* Cards */
+  .card { @apply bg-white rounded-2xl border border-slate-200/80 shadow-card; }
+  .card-hover { @apply card hover:shadow-card-hover hover:border-slate-300 transition-all duration-200; }
+  .card-glass { @apply bg-white/10 backdrop-blur-xl border border-white/20 rounded-2xl; }
+
+  /* Inputs */
+  .input-field { @apply w-full bg-white border border-slate-200 rounded-xl px-4 py-2.5 text-sm text-slate-900 placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-primary-500/30 focus:border-primary-400 transition-all duration-200 shadow-sm; }
+  .input-field-dark { @apply w-full bg-white/10 border border-white/20 rounded-xl px-4 py-2.5 text-sm text-white placeholder-white/40 focus:outline-none focus:ring-2 focus:ring-white/30 focus:border-white/40 transition-all duration-200; }
+  .input-error { @apply border-red-400 focus:ring-red-500/30 focus:border-red-400; }
+
+  /* Badges */
+  .badge { @apply inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-xs font-semibold; }
+  .badge-primary { @apply badge bg-primary-50 text-primary-700 border border-primary-100; }
+  .badge-blue { @apply badge bg-blue-50 text-blue-700 border border-blue-100; }
+  .badge-green { @apply badge bg-emerald-50 text-emerald-700 border border-emerald-100; }
+  .badge-amber { @apply badge bg-amber-50 text-amber-700 border border-amber-100; }
+  .badge-red { @apply badge bg-red-50 text-red-700 border border-red-100; }
+  .badge-slate { @apply badge bg-slate-100 text-slate-600; }
+
+  /* Sidebar — legacy classes kept for compatibility, scoped styles in AppSidebar.vue take precedence */
+  .sidebar-link { @apply flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm font-medium transition-all duration-200 text-slate-400 hover:text-white hover:bg-white/10 cursor-pointer; }
+  .sidebar-link-active { @apply flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm font-semibold transition-all duration-200 cursor-pointer text-white; background: rgba(99,102,241,0.25); box-shadow: inset 0 0 0 1px rgba(99,102,241,0.35); }
+
+  /* Dividers */
+  .divider { @apply border-t border-slate-200; }
+
+  /* Section headers */
+  .section-header { @apply flex items-center justify-between mb-6; }
+  .page-title { @apply text-2xl font-bold text-slate-900 tracking-tight; }
+  .page-subtitle { @apply text-sm text-slate-500 mt-0.5; }
+
+  /* Stat cards */
+  .stat-card { @apply card p-5 flex items-start gap-4; }
+  .stat-icon { @apply w-11 h-11 rounded-xl flex items-center justify-center flex-shrink-0; }
+  .stat-value { @apply text-2xl font-bold text-slate-900 mt-1; }
+  .stat-label { @apply text-xs font-medium text-slate-500 uppercase tracking-wide; }
+}
