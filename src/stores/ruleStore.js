@@ -35,11 +35,21 @@ export const useRuleStore = defineStore('rule', () => {
     loading.value = true
     error.value = null
     try {
+      const interpreted = interpretedRule.value || {}
+      const mergedRule = { ...interpreted, ...ruleData }
+      const commissionValue = Number(mergedRule.comissao)
+
       const payload = {
-        texto_original: currentRuleText.value,
-        ...interpretedRule.value,
-        ...ruleData,
+        codMarca: mergedRule.codMarca,
+        descrMarca: mergedRule.descrMarca || mergedRule.marca,
+        codCargo: mergedRule.codCargo,
+        descriCargo: mergedRule.descriCargo || mergedRule.cargo,
+        pctComiss: Number.isFinite(commissionValue) ? Number((commissionValue / 100).toFixed(4)) : undefined,
+        data: mergedRule.data,
+        textoOriginal: currentRuleText.value,
+        explicacao: explanation.value || mergedRule.explicacao || '',
       }
+
       const res = await rulesApi.save(payload)
       interpretedRule.value = null
       currentRuleText.value = ''

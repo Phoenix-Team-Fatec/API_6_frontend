@@ -149,7 +149,7 @@ export const rulesApi = {
   async save(rule) {
     if (USE_BACKEND) {
       try {
-        const response = await api.post('/rules', rule)
+        const response = await api.post('/api/rules', rule)
         return response
       } catch (error) {
         console.warn('Backend indisponivel para salvamento. Usando mock.', error?.message)
@@ -200,8 +200,8 @@ export const rulesApi = {
 
     if (USE_BACKEND) {
       try {
-        const response = await api.get(`/rules/${id}`)
-        return response
+        const response = await api.get(`/api/rules/${id}`)
+        return { data: mapBackendRuleToFrontend(response.data) }
       } catch (error) {
         console.warn('Backend indisponivel para busca por ID. Usando mock.', error?.message)
         if (!USE_MOCK) {
