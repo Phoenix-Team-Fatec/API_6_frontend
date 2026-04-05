@@ -109,6 +109,50 @@ export const useRuleStore = defineStore('rule', () => {
     }
   }
 
+  async function deactivateRule(id) {
+    loading.value = true
+    error.value = null
+    try {
+      const res = await rulesApi.deactivate(id)
+      const existingRule = rulesList.value.find(rule => String(rule.id) === String(id)) || currentRule.value || {}
+      const updatedRule = { ...existingRule, ...(res.data || {}), isVigente: false }
+      rulesList.value = rulesList.value.map(rule =>
+        String(rule.id) === String(id) ? updatedRule : rule
+      )
+      if (currentRule.value && String(currentRule.value.id) === String(id)) {
+        currentRule.value = updatedRule
+      }
+      return updatedRule
+    } catch (err) {
+      error.value = 'Erro ao desativar a regra.'
+      throw err
+    } finally {
+      loading.value = false
+    }
+  }
+
+  async function activateRule(id) {
+    loading.value = true
+    error.value = null
+    try {
+      const res = await rulesApi.activate(id)
+      const existingRule = rulesList.value.find(rule => String(rule.id) === String(id)) || currentRule.value || {}
+      const updatedRule = { ...existingRule, ...(res.data || {}), isVigente: true }
+      rulesList.value = rulesList.value.map(rule =>
+        String(rule.id) === String(id) ? updatedRule : rule
+      )
+      if (currentRule.value && String(currentRule.value.id) === String(id)) {
+        currentRule.value = updatedRule
+      }
+      return updatedRule
+    } catch (err) {
+      error.value = 'Erro ao ativar a regra.'
+      throw err
+    } finally {
+      loading.value = false
+    }
+  }
+
   function resetInterpretation() {
     interpretedRule.value = null
     explanation.value = ''
@@ -132,6 +176,8 @@ export const useRuleStore = defineStore('rule', () => {
     fetchRules,
     fetchRuleById,
     deleteRule,
+    deactivateRule,
+    activateRule,
     resetInterpretation,
   }
 })

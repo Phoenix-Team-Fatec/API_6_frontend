@@ -63,7 +63,7 @@
       </div>
 
       <!-- Table -->
-      <RulesTable v-else :rules="paginatedRules" @select="goToDetail" @sort="onSort" @delete="requestDelete" />
+      <RulesTable v-else :rules="paginatedRules" @select="goToDetail" @sort="onSort" @delete="requestDelete" @toggleVigente="requestToggleVigente" />
 
       <!-- Pagination -->
       <div v-if="store.rulesList.length > 0" class="px-5 py-3 border-t border-slate-100 flex items-center justify-between bg-slate-50/50">
@@ -88,6 +88,18 @@
     @cancel="closeDeleteModal"
     @confirm="confirmDelete"
   />
+
+  <ConfirmationModal
+    :show="showVigenteModal"
+    :title="vigenteModalTitle"
+    :message="vigenteConfirmationMessage"
+    :confirm-text="vigenteModalConfirmText"
+    cancel-text="Cancelar"
+    :variant="ruleToToggleVigente?.isVigente ? 'danger' : 'success'"
+    :loading="togglingVigente"
+    @cancel="closeVigenteModal"
+    @confirm="confirmToggleVigente"
+  />
 </template>
 
 <script setup>
@@ -105,6 +117,9 @@ const perPage = 10
 const showDeleteModal = ref(false)
 const deletingRule = ref(false)
 const ruleToDelete = ref(null)
+const showVigenteModal = ref(false)
+const togglingVigente = ref(false)
+const ruleToToggleVigente = ref(null)
 
 const totalPages = computed(() => Math.max(1, Math.ceil(store.rulesList.length / perPage)))
 
@@ -178,6 +193,57 @@ const confirmDelete = async () => {
     await store.fetchRules()
   } finally {
     deletingRule.value = false
+  }
+}
+
+const vigenteModalTitle = computed(() => {
+  if (!ruleToToggleVigente.value) return ''
+  return ruleToToggleVigente.value.isVigente ? 'Desativar regra' : 'Ativar regra'
+})
+
+const vigenteModalConfirmText = computed(() => {
+  if (!ruleToToggleVigente.value) return ''
+  return ruleToToggleVigente.value.isVigente ? 'Desativar' : 'Ativar'
+})
+
+const vigenteConfirmationMessage = computed(() => {
+  if (!ruleToToggleVigente.value) return ''
+  const { cargo, marca, isVigente } = ruleToToggleVigente.value
+  if (isVigente) {
+    return `Tem certeza que deseja deixar inativa a regra de ${cargo} da marca ${marca}?`
+  } else {
+    return `Tem certeza que deseja ativar a regra de ${cargo} da marca ${marca}?`
+  }
+})
+
+const requestToggleVigente = (rule) => {
+  ruleToToggleVigente.value = rule
+  showVigenteModal.value = true
+}
+
+const closeVigenteModal = () => {
+  if (togglingVigente.value) return
+  showVigenteModal.value = false
+  ruleToToggleVigente.value = null
+}
+
+const confirmToggleVigente = async () => {
+  if (!ruleToToggleVigente.value) return
+
+  const targetRule = ruleToToggleVigente.value
+  togglingVigente.value = true
+  try {
+    if (targetRule.isVigente) {
+      await store.deactivateRule(targetRule.id)
+    } else {
+      await store.activateRule(targetRule.id)
+    }
+  } catch (error) {
+    console.error('Erro ao alternar vigência da regra:', error)
+  } finally {
+    showVigenteModal.value = false
+    ruleToToggleVigente.value = null
+    togglingVigente.value = false
   }
 }
 </script>

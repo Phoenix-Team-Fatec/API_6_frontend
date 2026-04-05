@@ -46,6 +46,20 @@
                 </svg>
               </button>
               <button
+                :class="[
+                  'transition-colors p-1 rounded',
+                  rule.isVigente
+                    ? 'text-emerald-500 hover:text-gray-400'
+                      : 'text-gray-400 hover:text-emerald-600'
+                ]"
+                @click="emit('toggleVigente', rule)"
+                :aria-label="rule.isVigente ? 'Desativar regra' : 'Ativar regra'"
+              >
+                  <svg class="w-4 h-4" fill="currentColor" viewBox="0 0 24 24">
+                  <path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm-2 15l-5-5 1.41-1.41L10 14.17l7.59-7.59L19 8l-9 9z"/>
+                </svg>
+              </button>
+              <button
                 class="text-gray-400 hover:text-red-600 transition-colors p-1 rounded"
                 @click="emit('delete', rule)"
                 aria-label="Excluir regra"
@@ -67,7 +81,7 @@ const props = defineProps({
   rules: { type: Array, default: () => [] }
 })
 
-const emit = defineEmits(['select', 'sort', 'delete'])
+const emit = defineEmits(['select', 'sort', 'delete', 'toggleVigente'])
 
 const columns = [
   { key: 'marca', label: 'Marca' },

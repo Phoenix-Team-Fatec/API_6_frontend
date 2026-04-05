@@ -254,6 +254,76 @@ export const rulesApi = {
     }
 
     throw new Error('Exclusao de regra indisponivel: backend e mock estao desativados.')
+  },
+
+  async deactivate(id) {
+    if (USE_BACKEND) {
+      try {
+        const response = await api.post(`/api/rules/${id}/deactivate`)
+        const hasBackendPayload = response?.data && typeof response.data === 'object' && response.data.id !== undefined
+        const updatedRule = hasBackendPayload
+          ? mapBackendRuleToFrontend(response.data)
+          : { id: Number(id), isVigente: false }
+        cachedBackendRules = cachedBackendRules.map(r =>
+          String(r.id) === String(id) ? { ...r, ...updatedRule, isVigente: false } : r
+        )
+        return { data: updatedRule }
+      } catch (error) {
+        console.warn('Backend indisponivel para desativação. Usando mock.', error?.message)
+        if (!USE_MOCK) {
+          throw error
+        }
+      }
+    }
+
+    if (USE_MOCK) {
+      await new Promise(r => setTimeout(r, 400))
+      const rule = mockRules.find(r => String(r.id) === String(id))
+      if (!rule) throw new Error('Regra não encontrada')
+      rule.isVigente = false
+      const updated = { ...rule }
+      cachedBackendRules = cachedBackendRules.map(r =>
+        String(r.id) === String(id) ? updated : r
+      )
+      return { data: updated }
+    }
+
+    throw new Error('Desativacao de regra indisponivel: backend e mock estao desativados.')
+  },
+
+  async activate(id) {
+    if (USE_BACKEND) {
+      try {
+        const response = await api.post(`/api/rules/${id}/activate`)
+        const hasBackendPayload = response?.data && typeof response.data === 'object' && response.data.id !== undefined
+        const updatedRule = hasBackendPayload
+          ? mapBackendRuleToFrontend(response.data)
+          : { id: Number(id), isVigente: true }
+        cachedBackendRules = cachedBackendRules.map(r =>
+          String(r.id) === String(id) ? { ...r, ...updatedRule, isVigente: true } : r
+        )
+        return { data: updatedRule }
+      } catch (error) {
+        console.warn('Backend indisponivel para ativação. Usando mock.', error?.message)
+        if (!USE_MOCK) {
+          throw error
+        }
+      }
+    }
+
+    if (USE_MOCK) {
+      await new Promise(r => setTimeout(r, 400))
+      const rule = mockRules.find(r => String(r.id) === String(id))
+      if (!rule) throw new Error('Regra não encontrada')
+      rule.isVigente = true
+      const updated = { ...rule }
+      cachedBackendRules = cachedBackendRules.map(r =>
+        String(r.id) === String(id) ? updated : r
+      )
+      return { data: updated }
+    }
+
+    throw new Error('Ativacao de regra indisponivel: backend e mock estao desativados.')
   }
 }
 
