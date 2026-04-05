@@ -125,6 +125,77 @@ const extractYearMonthFromText = (text) => {
   return `${year}-${monthMap[monthName]}`
 }
 
+const normalizeForComparison = (value) => {
+  return String(value || '')
+    .toLowerCase()
+    .normalize('NFD')
+    .replace(/[\u0300-\u036f]/g, '')
+    .trim()
+}
+
+const ignoredBrandTerms = new Set([
+  'gerente', 'gerentes',
+  'representante', 'representantes',
+  'vendedor', 'vendedores', 'vendedora', 'vendedoras',
+  'assistente', 'assistentes',
+  'de', 'da', 'do', 'das', 'dos', 'e', 'a', 'o', 'as', 'os',
+  'marca', 'marcas',
+])
+
+const ignoredBrandPhrases = new Set([
+  'gerente de loja',
+  'gerentes de loja',
+  'vendedor balcao',
+  'vendedores balcao',
+  'assistente de vendas',
+  'assistentes de vendas',
+  'gerente quiosque',
+  'gerentes quiosque',
+  'vendedor loja',
+  'vendedores loja',
+])
+
+const extractCargoFromText = (text) => {
+  const normalizedText = normalizeForComparison(text)
+
+  const cargoMatchers = [
+    { regex: /\bgerentes?\s+de\s+loja\b/, cargo: 'Gerente de Loja' },
+    { regex: /\bvendedores?\s+balca[oã]\b/, cargo: 'Vendedor Balcao' },
+    { regex: /\bassistentes?\s+de\s+vendas\b/, cargo: 'Assistente de Vendas' },
+    { regex: /\bgerentes?\s+quiosque\b/, cargo: 'Gerente Quiosque' },
+    { regex: /\bvendedores?\s+loja\b/, cargo: 'Vendedor Loja' },
+    { regex: /\bgerentes?\b/, cargo: 'Gerente' },
+    { regex: /\brepresentantes?\b/, cargo: 'Representante' },
+    { regex: /\bvendedores?\b/, cargo: 'Vendedor' },
+  ]
+
+  const match = cargoMatchers.find(({ regex }) => regex.test(normalizedText))
+  return match ? match.cargo : 'Vendedor'
+}
+
+const extractBrandFromText = (text) => {
+  const tokens = String(text || '').match(/[A-Za-zÀ-ÿ0-9]+/g) || []
+
+  for (let i = 0; i < tokens.length; i += 1) {
+    const token = tokens[i]
+    const normalizedToken = normalizeForComparison(token)
+
+    if (!normalizedToken || ignoredBrandTerms.has(normalizedToken)) continue
+
+    const twoWordPhrase = normalizeForComparison(`${token} ${tokens[i + 1] || ''}`)
+    const threeWordPhrase = normalizeForComparison(`${token} ${tokens[i + 1] || ''} ${tokens[i + 2] || ''}`)
+    if (ignoredBrandPhrases.has(twoWordPhrase) || ignoredBrandPhrases.has(threeWordPhrase)) continue
+
+    const startsWithUpper = /^[A-ZÀ-Ý][a-zà-ÿ0-9]+$/.test(token)
+    const isAllUpper = /^[A-ZÀ-Ý0-9]{2,}$/.test(token)
+    if (startsWithUpper || isAllUpper) {
+      return token
+    }
+  }
+
+  return 'Marca Identificada'
+}
+
 export const rulesApi = {
   async interpret(text) {
     if (USE_AI) {
@@ -141,10 +212,13 @@ export const rulesApi = {
 
     if (USE_MOCK) {
       await new Promise(r => setTimeout(r, 1500)) // simula delay da IA
+      const detectedMarca = extractBrandFromText(text)
+      const detectedCargo = extractCargoFromText(text)
+
       return {
         data: {
-          marca: text.match(/nike/i) ? "Nike" : text.match(/adidas/i) ? "Adidas" : text.match(/puma/i) ? "Puma" : "Marca Identificada",
-          cargo: text.match(/gerente/i) ? "Gerente" : text.match(/representante/i) ? "Representante" : "Vendedor",
+          marca: detectedMarca,
+          cargo: detectedCargo,
           comissao: parseFloat(text.match(/(\d+(?:\.\d+)?)\s*%/)?.[1] || "5"),
           data: extractYearMonthFromText(text),
           explicacao: `A IA analisou o texto "${text.substring(0, 50)}..." e identificou os seguintes campos:\n\n• **Marca**: Identificada pelo nome da empresa mencionada no contexto da frase.\n• **Cargo**: Inferido pelo papel profissional descrito (vendedor, gerente, etc).\n• **Comissão**: Extraída do percentual numérico seguido do símbolo "%".\n• **Data**: Normalizada a partir da referência temporal mencionada no texto.`
