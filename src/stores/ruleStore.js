@@ -8,10 +8,12 @@ export const useRuleStore = defineStore('rule', () => {
   const explanation = ref('')
   const editingRuleId = ref(null)
   const rulesList = ref([])
+  const trashRulesList = ref([])
   const currentRule = ref(null)
   const loading = ref(false)
   const error = ref(null)
   const total = ref(0)
+  const trashTotal = ref(0)
   const filters = ref({ marca: '', cargo: '', isVigente: '', data_inicio: '', data_fim: '' })
 
   const hasInterpretedRule = computed(() => !!interpretedRule.value)
@@ -136,6 +138,20 @@ export const useRuleStore = defineStore('rule', () => {
     }
   }
 
+  async function fetchTrashRules(params = {}) {
+    loading.value = true
+    error.value = null
+    try {
+      const res = await rulesApi.getTrash({ ...filters.value, ...params })
+      trashRulesList.value = res.data.rules || res.data
+      trashTotal.value = res.data.total || trashRulesList.value.length
+    } catch (err) {
+      error.value = 'Erro ao carregar regras da lixeira.'
+    } finally {
+      loading.value = false
+    }
+  }
+
   async function deleteRule(id) {
     loading.value = true
     error.value = null
@@ -148,6 +164,32 @@ export const useRuleStore = defineStore('rule', () => {
       }
     } catch (err) {
       error.value = 'Erro ao excluir a regra.'
+      throw err
+    } finally {
+      loading.value = false
+    }
+  }
+
+  async function restoreRule(id) {
+    loading.value = true
+    error.value = null
+    try {
+      const res = await rulesApi.restore(id)
+      const restoredRule = res.data
+      trashRulesList.value = trashRulesList.value.filter(rule => String(rule.id) !== String(id))
+      trashTotal.value = Math.max(0, trashTotal.value - 1)
+
+      if (restoredRule) {
+        const exists = rulesList.value.some(rule => String(rule.id) === String(id))
+        if (!exists) {
+          rulesList.value = [restoredRule, ...rulesList.value]
+          total.value += 1
+        }
+      }
+
+      return restoredRule
+    } catch (err) {
+      error.value = 'Erro ao restaurar a regra.'
       throw err
     } finally {
       loading.value = false
@@ -248,10 +290,12 @@ export const useRuleStore = defineStore('rule', () => {
     explanation,
     editingRuleId,
     rulesList,
+    trashRulesList,
     currentRule,
     loading,
     error,
     total,
+    trashTotal,
     filters,
     hasInterpretedRule,
     isEditing,
@@ -261,7 +305,9 @@ export const useRuleStore = defineStore('rule', () => {
     clearEditingRule,
     fetchRules,
     fetchRuleById,
+    fetchTrashRules,
     deleteRule,
+    restoreRule,
     deactivateRule,
     activateRule,
     rollbackRule,

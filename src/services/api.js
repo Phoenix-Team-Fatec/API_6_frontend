@@ -97,6 +97,7 @@ const mapBackendRuleToFrontend = (item) => {
     explicacao: item.explicacao,
     created_at: item.createdAt,
     updated_at: item.updatedAt,
+    deleted_at: item.deletedAt,
     versao: item.versao,
     versoesAnteriores: item.versoesAnteriores,
     isVigente: item.isVigente ?? true
@@ -111,6 +112,12 @@ const applyLocalFilters = (rules, params = {}) => {
   if (params.isVigente === 'false' || params.isVigente === false) filtered = filtered.filter(r => r.isVigente === false)
   return filtered
 }
+
+const getDeletedAtValue = (rule) => rule.deleted_at || rule.deletedAt || null
+
+const applyActiveListRules = (rules) => rules.filter(rule => !getDeletedAtValue(rule))
+
+const applyTrashListRules = (rules) => rules.filter(rule => !!getDeletedAtValue(rule))
 
 const extractYearMonthFromText = (text) => {
   const normalizedText = String(text || '')
@@ -352,11 +359,41 @@ export const rulesApi = {
 
     if (USE_MOCK) {
       await new Promise(r => setTimeout(r, 600))
-      let rules = applyLocalFilters(mockRules, params)
+      let rules = applyActiveListRules(mockRules)
+      rules = applyLocalFilters(rules, params)
       return { data: { rules, total: rules.length, page: 1, per_page: 10 } }
     }
 
     throw new Error('Listagem de regras indisponivel: backend e mock estao desativados.')
+  },
+
+  async getTrash(params = {}) {
+    if (USE_BACKEND) {
+      try {
+        const backendParams = {}
+        if (params.codMarca !== undefined && params.codMarca !== null && params.codMarca !== '') backendParams.codMarca = params.codMarca
+        if (params.codCargo !== undefined && params.codCargo !== null && params.codCargo !== '') backendParams.codCargo = params.codCargo
+        if (params.isVigente === 'true' || params.isVigente === true) backendParams.isVigente = true
+        if (params.isVigente === 'false' || params.isVigente === false) backendParams.isVigente = false
+
+        const res = await api.get('/api/rules/commission-rates/trash', { params: backendParams })
+        const backendRules = (Array.isArray(res.data) ? res.data : []).map(item => mapBackendRuleToFrontend(item))
+        const rules = applyLocalFilters(backendRules, params)
+        return { data: { rules, total: rules.length, page: 1, per_page: 10 } }
+      } catch (error) {
+        console.warn('Backend indisponivel para listagem da lixeira. Usando mock.', error?.message)
+        if (!USE_MOCK) throw error
+      }
+    }
+
+    if (USE_MOCK) {
+      await new Promise(r => setTimeout(r, 600))
+      let rules = applyTrashListRules(mockRules)
+      rules = applyLocalFilters(rules, params)
+      return { data: { rules, total: rules.length, page: 1, per_page: 10 } }
+    }
+
+    throw new Error('Listagem da lixeira indisponivel: backend e mock estao desativados.')
   },
 
   async getById(id) {
@@ -391,7 +428,9 @@ export const rulesApi = {
     if (USE_BACKEND) {
       try {
         const response = await api.delete(`/api/rules/${id}`)
-        cachedBackendRules = cachedBackendRules.filter(r => String(r.id) !== String(id))
+        cachedBackendRules = cachedBackendRules.map(r =>
+          String(r.id) === String(id) ? { ...r, deleted_at: new Date().toISOString() } : r
+        )
         return response
       } catch (error) {
         console.warn('Backend indisponivel para exclusão. Usando mock.', error?.message)
@@ -403,10 +442,14 @@ export const rulesApi = {
 
     if (USE_MOCK) {
       await new Promise(r => setTimeout(r, 400))
-      const ruleIndex = mockRules.findIndex(r => String(r.id) === String(id))
-      if (ruleIndex === -1) throw new Error('Regra não encontrada')
-      mockRules.splice(ruleIndex, 1)
-      cachedBackendRules = cachedBackendRules.filter(r => String(r.id) !== String(id))
+      const rule = mockRules.find(r => String(r.id) === String(id))
+      if (!rule) throw new Error('Regra não encontrada')
+      const now = new Date().toISOString()
+      rule.deleted_at = now
+      rule.updated_at = now
+      cachedBackendRules = cachedBackendRules.map(r =>
+        String(r.id) === String(id) ? { ...r, deleted_at: now, updated_at: now } : r
+      )
       return { data: { success: true } }
     }
 
@@ -526,6 +569,40 @@ export const rulesApi = {
     }
 
     throw new Error('Rollback de regra indisponivel: backend e mock estao desativados.')
+  },
+
+  async restore(id) {
+    if (USE_BACKEND) {
+      try {
+        await api.post(`/api/rules/${id}/restore`)
+        const refreshed = await api.get(`/api/rules/${id}`)
+        const restoredRule = mapBackendRuleToFrontend(refreshed.data)
+        cachedBackendRules = cachedBackendRules.map(r =>
+          String(r.id) === String(id) ? { ...r, ...restoredRule, deleted_at: null } : r
+        )
+        return { data: restoredRule }
+      } catch (error) {
+        console.warn('Backend indisponivel para restore. Usando mock.', error?.message)
+        if (!USE_MOCK) {
+          throw error
+        }
+      }
+    }
+
+    if (USE_MOCK) {
+      await new Promise(r => setTimeout(r, 400))
+      const rule = mockRules.find(r => String(r.id) === String(id))
+      if (!rule) throw new Error('Regra não encontrada')
+      rule.deleted_at = null
+      rule.updated_at = new Date().toISOString()
+      const restored = { ...rule }
+      cachedBackendRules = cachedBackendRules.map(r =>
+        String(r.id) === String(id) ? { ...r, ...restored, deleted_at: null } : r
+      )
+      return { data: restored }
+    }
+
+    throw new Error('Restore de regra indisponivel: backend e mock estao desativados.')
   }
 }
 

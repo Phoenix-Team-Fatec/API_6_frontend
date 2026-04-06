@@ -20,7 +20,7 @@
         @input="emitFilters"
       />
     </div>
-    <div>
+    <div v-if="props.showVigencia">
       <label class="block text-xs font-medium text-gray-500 mb-1">Vigência</label>
       <div class="flex items-center gap-2">
         <button
@@ -63,16 +63,21 @@
 <script setup>
 import { ref, computed } from 'vue'
 
+const props = defineProps({
+  showVigencia: { type: Boolean, default: true },
+  defaultIsVigente: { type: String, default: 'true' },
+})
+
 const emit = defineEmits(['update:filters'])
 
-const localFilters = ref({ marca: '', cargo: '', isVigente: 'true' })
+const localFilters = ref({ marca: '', cargo: '', isVigente: props.defaultIsVigente })
 
 const hasActiveFilters = computed(() => localFilters.value.marca || localFilters.value.cargo)
 
 const emitFilters = () => emit('update:filters', { ...localFilters.value })
 
 const clearFilters = () => {
-  localFilters.value = { marca: '', cargo: '', isVigente: 'true' }
+  localFilters.value = { marca: '', cargo: '', isVigente: props.defaultIsVigente }
   emitFilters()
 }
 
