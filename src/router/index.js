@@ -22,6 +22,7 @@ const routes = [
     children: [
       { path: 'rules', name: 'RulesList', component: () => import('../views/RulesListView.vue') },
       { path: 'rules/new', name: 'CreateRule', component: () => import('../views/CreateRuleView.vue') },
+      { path: 'rules/trash', name: 'RulesTrash', component: () => import('../views/RulesTrashView.vue') },
       { path: 'rules/confirm', name: 'ConfirmRule', component: () => import('../views/ConfirmRuleView.vue') },
       { path: 'rules/:id', name: 'RuleDetail', component: () => import('../views/RuleDetailView.vue') },
     ]
