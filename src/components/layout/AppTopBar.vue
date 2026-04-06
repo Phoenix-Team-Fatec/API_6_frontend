@@ -52,7 +52,7 @@ const route = useRoute()
 const authStore = useAuthStore()
 
 const pageTitle = computed(() => {
-  const titles = { RulesList: 'Regras de Negócio', CreateRule: 'Nova Regra', ConfirmRule: 'Confirmar Regra', RuleDetail: 'Detalhe da Regra' }
+  const titles = { RulesList: 'Regras de Negócio', CreateRule: 'Nova Regra', ConfirmRule: 'Confirmar Regra', RuleDetail: 'Detalhe da Regra', RulesTrash: 'Lixeira' }
   return titles[route.name] || 'Dashboard'
 })
 </script>
