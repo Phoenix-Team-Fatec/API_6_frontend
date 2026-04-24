@@ -187,10 +187,16 @@ const IconAI = {
     h('path', { 'stroke-linecap': 'round', 'stroke-linejoin': 'round', 'stroke-width': '1.8', d: 'M13 10V3L4 14h7v7l9-11h-7z' }),
   ]),
 }
+const IconCommission = {
+  render: () => h('svg', { fill: 'none', viewBox: '0 0 24 24', stroke: 'currentColor' }, [
+    h('path', { 'stroke-linecap': 'round', 'stroke-linejoin': 'round', 'stroke-width': '1.8', d: 'M12 8c-1.657 0-3-1.343-3-3s1.343-3 3-3 3 1.343 3 3-1.343 3-3 3zm0 2c2.21 0 4 1.79 4 4v2H8v-2c0-2.21 1.79-4 4-4zm6 6H6v4h12v-4z' }),
+  ]),
+}
 
 const mainNav = [
   { to: '/rules', label: 'Regras', icon: IconRules, exact: true },
   { to: '/rules/new', label: 'Nova Regra', icon: IconPlus, exact: true },
+  { to: '/commission', label: 'Comissão', icon: IconCommission, exact: true },
 ]
 
 const toolsNav = [

@@ -24,6 +24,9 @@ const routes = [
       { path: 'rules/new', name: 'CreateRule', component: () => import('../views/CreateRuleView.vue') },
       { path: 'rules/confirm', name: 'ConfirmRule', component: () => import('../views/ConfirmRuleView.vue') },
       { path: 'rules/:id', name: 'RuleDetail', component: () => import('../views/RuleDetailView.vue') },
+      { path: 'commission', name: 'Commission', component: () => import('../views/CommissionView.vue') },
+      { path: 'commission/details', name: 'CommissionDetails', component: () => import('../views/CommissionDetailsView.vue') },
+      { path: 'commission/calculate', name: 'CommissionCalculate', component: () => import('../views/CommissionCalculateView.vue') },
     ]
   },
 ]
