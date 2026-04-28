@@ -6,7 +6,7 @@
         <h1 class="page-title">Regras de Negócio</h1>
         <p class="page-subtitle">Gerencie e monitore todas as regras cadastradas</p>
       </div>
-      <RouterLink to="/rules/new">
+      <RouterLink to="/rules/new?mode=new" @click="store.resetInterpretation()">
         <button class="btn-primary">
           <svg class="w-4 h-4 mr-2" fill="none" viewBox="0 0 24 24" stroke="currentColor">
             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4" />
@@ -57,36 +57,88 @@
         </div>
         <h3 class="text-base font-semibold text-slate-700 mb-1">Nenhuma regra encontrada</h3>
         <p class="text-sm text-slate-400 mb-5">Crie sua primeira regra com auxílio da IA</p>
-        <RouterLink to="/rules/new">
+        <RouterLink to="/rules/new?mode=new" @click="store.resetInterpretation()">
           <button class="btn-primary">Criar Primeira Regra</button>
         </RouterLink>
       </div>
 
       <!-- Table -->
-      <RulesTable v-else :rules="store.rulesList" @select="goToDetail" @sort="onSort" />
+      <RulesTable v-else :rules="paginatedRules" @select="goToDetail" @sort="onSort" @delete="requestDelete" @toggleVigente="requestToggleVigente" @edit="requestEdit" />
 
       <!-- Pagination -->
       <div v-if="store.rulesList.length > 0" class="px-5 py-3 border-t border-slate-100 flex items-center justify-between bg-slate-50/50">
-        <p class="text-xs text-slate-400">Exibindo <span class="font-semibold text-slate-600">{{ store.rulesList.length }}</span> de <span class="font-semibold text-slate-600">{{ store.total }}</span> regras</p>
+        <p class="text-xs text-slate-400">Exibindo <span class="font-semibold text-slate-600">{{ startItem }}</span>-<span class="font-semibold text-slate-600">{{ endItem }}</span> de <span class="font-semibold text-slate-600">{{ store.total }}</span> regras</p>
         <div class="flex items-center gap-1">
-          <button class="btn-ghost btn-sm opacity-40 cursor-not-allowed" disabled>← Anterior</button>
-          <button class="px-3 py-1.5 text-xs font-semibold bg-primary-500 text-white rounded-lg">1</button>
-          <button class="btn-ghost btn-sm opacity-40 cursor-not-allowed" disabled>Próximo →</button>
+          <button class="btn-ghost btn-sm" :class="{ 'opacity-40 cursor-not-allowed': !canGoPrevious }" :disabled="!canGoPrevious" @click="goPrevious">← Anterior</button>
+          <button class="px-3 py-1.5 text-xs font-semibold bg-primary-500 text-white rounded-lg">{{ currentPage }}</button>
+          <button class="btn-ghost btn-sm" :class="{ 'opacity-40 cursor-not-allowed': !canGoNext }" :disabled="!canGoNext" @click="goNext">Próximo →</button>
         </div>
       </div>
     </div>
   </div>
+
+  <ConfirmationModal
+    :show="showDeleteModal"
+    title="Excluir regra"
+    :message="deleteConfirmationMessage"
+    confirm-text="Excluir"
+    cancel-text="Cancelar"
+    variant="danger"
+    :loading="deletingRule"
+    @cancel="closeDeleteModal"
+    @confirm="confirmDelete"
+  />
+
+  <ConfirmationModal
+    :show="showVigenteModal"
+    :title="vigenteModalTitle"
+    :message="vigenteConfirmationMessage"
+    :confirm-text="vigenteModalConfirmText"
+    cancel-text="Cancelar"
+    :variant="ruleToToggleVigente?.isVigente ? 'danger' : 'success'"
+    :loading="togglingVigente"
+    @cancel="closeVigenteModal"
+    @confirm="confirmToggleVigente"
+  />
 </template>
 
 <script setup>
-import { onMounted, computed } from 'vue'
+import { onMounted, computed, ref, watch } from 'vue'
 import { useRouter } from 'vue-router'
 import { useRuleStore } from '../stores/ruleStore'
 import RulesTable from '../components/table/RulesTable.vue'
 import FiltersBar from '../components/table/FiltersBar.vue'
+import ConfirmationModal from '../components/common/ConfirmationModal.vue'
 
 const router = useRouter()
 const store = useRuleStore()
+const currentPage = ref(1)
+const perPage = 10
+const showDeleteModal = ref(false)
+const deletingRule = ref(false)
+const ruleToDelete = ref(null)
+const showVigenteModal = ref(false)
+const togglingVigente = ref(false)
+const ruleToToggleVigente = ref(null)
+
+const totalPages = computed(() => Math.max(1, Math.ceil(store.rulesList.length / perPage)))
+
+const paginatedRules = computed(() => {
+  const start = (currentPage.value - 1) * perPage
+  return store.rulesList.slice(start, start + perPage)
+})
+
+const canGoPrevious = computed(() => currentPage.value > 1)
+const canGoNext = computed(() => currentPage.value < totalPages.value)
+
+const startItem = computed(() => (store.rulesList.length ? (currentPage.value - 1) * perPage + 1 : 0))
+const endItem = computed(() => Math.min(currentPage.value * perPage, store.rulesList.length))
+
+watch(() => store.rulesList.length, () => {
+  if (currentPage.value > totalPages.value) {
+    currentPage.value = totalPages.value
+  }
+})
 
 const stats = computed(() => [
   { label: 'Total de Regras', value: store.total, iconBg: 'bg-primary-50', iconColor: 'text-primary-600', icon: 'M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2', sub: null },
@@ -99,9 +151,113 @@ onMounted(() => store.fetchRules())
 
 const onFiltersChange = (filters) => {
   store.filters = filters
+  currentPage.value = 1
   store.fetchRules()
+}
+
+const goPrevious = () => {
+  if (canGoPrevious.value) currentPage.value -= 1
+}
+
+const goNext = () => {
+  if (canGoNext.value) currentPage.value += 1
 }
 
 const onSort = (key) => console.log('Sort:', key)
 const goToDetail = (rule) => router.push(`/rules/${rule.id}`)
+
+const deleteConfirmationMessage = computed(() => {
+  if (!ruleToDelete.value) return 'Tem certeza que deseja excluir esta regra?'
+  return `Tem certeza que deseja excluir a regra de ${ruleToDelete.value.cargo} da marca ${ruleToDelete.value.marca}?\n`
+})
+
+const requestDelete = (rule) => {
+  ruleToDelete.value = rule
+  showDeleteModal.value = true
+}
+
+const closeDeleteModal = () => {
+  if (deletingRule.value) return
+  showDeleteModal.value = false
+  ruleToDelete.value = null
+}
+
+const confirmDelete = async () => {
+  if (!ruleToDelete.value) return
+
+  deletingRule.value = true
+  try {
+    await store.deleteRule(ruleToDelete.value.id)
+    showDeleteModal.value = false
+    ruleToDelete.value = null
+    await store.fetchRules()
+  } finally {
+    deletingRule.value = false
+  }
+}
+
+const vigenteModalTitle = computed(() => {
+  if (!ruleToToggleVigente.value) return ''
+  return ruleToToggleVigente.value.isVigente ? 'Desativar regra' : 'Ativar regra'
+})
+
+const vigenteModalConfirmText = computed(() => {
+  if (!ruleToToggleVigente.value) return ''
+  return ruleToToggleVigente.value.isVigente ? 'Desativar' : 'Ativar'
+})
+
+const vigenteConfirmationMessage = computed(() => {
+  if (!ruleToToggleVigente.value) return ''
+  const { cargo, marca, isVigente } = ruleToToggleVigente.value
+  if (isVigente) {
+    return `Tem certeza que deseja deixar inativa a regra de ${cargo} da marca ${marca}?`
+  } else {
+    return `Tem certeza que deseja ativar a regra de ${cargo} da marca ${marca}?`
+  }
+})
+
+const requestToggleVigente = (rule) => {
+  ruleToToggleVigente.value = rule
+  showVigenteModal.value = true
+}
+
+const requestEdit = async (rule) => {
+  try {
+    await store.fetchRuleById(rule.id)
+    store.startEditingRule(store.currentRule || rule)
+  } catch {
+    store.startEditingRule(rule)
+  }
+
+  router.push({
+    path: '/rules/confirm',
+    query: { mode: 'edit', id: String(rule.id) },
+  })
+}
+
+const closeVigenteModal = () => {
+  if (togglingVigente.value) return
+  showVigenteModal.value = false
+  ruleToToggleVigente.value = null
+}
+
+const confirmToggleVigente = async () => {
+  if (!ruleToToggleVigente.value) return
+
+  const targetRule = ruleToToggleVigente.value
+  togglingVigente.value = true
+  try {
+    if (targetRule.isVigente) {
+      await store.deactivateRule(targetRule.id)
+    } else {
+      await store.activateRule(targetRule.id)
+    }
+  } catch (error) {
+    console.error('Erro ao alternar vigência da regra:', error)
+  } finally {
+    showVigenteModal.value = false
+    ruleToToggleVigente.value = null
+    togglingVigente.value = false
+  }
+}
 </script>
