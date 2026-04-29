@@ -75,7 +75,12 @@
           </div>
 
           <div class="grid grid-cols-2 gap-4">
-            <div v-for="field in structuredFields" :key="field.key" class="space-y-1.5">
+            <div
+              v-for="field in structuredFields"
+              :key="field.key"
+              class="space-y-1.5"
+              :class="{ 'col-span-2': field.fullWidth }"
+            >
               <label class="block text-[11px] font-bold text-slate-400 uppercase tracking-widest">{{ field.label }}</label>
               <div class="relative">
                 <input
@@ -237,10 +242,11 @@ watch(() => store.interpretedRule, (val) => {
 }, { immediate: true })
 
 const structuredFields = [
-  { key: 'marca', label: 'Marca' },
+  { key: 'nomeRegra', label: 'Nome da regra', fullWidth: true },
   { key: 'cargo', label: 'Cargo' },
-  { key: 'comissao', label: 'Comissão (%)', type: 'number' },
+  { key: 'marca', label: 'Marca' },
   { key: 'data', label: 'Data (AAAA-MM)' },
+  { key: 'comissao', label: 'Comissão (%)', type: 'number' },
 ]
 
 const isAIInferred = (key) => ['marca', 'cargo', 'comissao', 'data'].includes(key)
@@ -272,6 +278,7 @@ const rollbackConfirmationMessage = computed(() => {
 const formatHistoryValue = (version, key) => {
   const value = version?.[key]
 
+  if (key === 'nomeRegra') return version?.nomeRegra || version?.nome || version?.nome_regra || '—'
   if (key === 'marca') return version?.marca || version?.descrMarca || version?.descrmarca || '—'
   if (key === 'cargo') return version?.cargo || version?.descriCargo || version?.descricargo || '—'
   if (key === 'comissao') {

@@ -31,7 +31,7 @@ export const useRuleStore = defineStore('rule', () => {
     error.value = null
     try {
       const res = await rulesApi.interpret(text)
-      interpretedRule.value = res.data
+      interpretedRule.value = { ...res.data, nomeRegra: trimmedName, nome: trimmedName }
       explanation.value = res.data.explicacao
       currentRuleName.value = trimmedName
       currentRuleText.value = text
@@ -44,7 +44,7 @@ export const useRuleStore = defineStore('rule', () => {
   }
 
   async function saveRule(ruleData) {
-    const trimmedName = currentRuleName.value.trim()
+    const trimmedName = String(ruleData?.nomeRegra || ruleData?.nome || currentRuleName.value).trim()
     if (!trimmedName) {
       error.value = 'Informe o nome da regra antes de salvar.'
       throw new Error('Nome da regra é obrigatório.')
@@ -56,6 +56,7 @@ export const useRuleStore = defineStore('rule', () => {
       const interpreted = interpretedRule.value || {}
       const mergedRule = { ...interpreted, ...ruleData }
       const commissionValue = Number(mergedRule.comissao)
+      currentRuleName.value = trimmedName
 
       const payload = {
         nomeRegra: trimmedName,

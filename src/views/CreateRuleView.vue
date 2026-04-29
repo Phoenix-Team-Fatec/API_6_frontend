@@ -136,6 +136,14 @@
           </div>
         </template>
 
+        <div
+          v-if="ruleName.trim()"
+          class="mb-4 rounded-lg border border-gray-100 bg-gray-50 p-3"
+        >
+          <p class="text-xs font-medium text-gray-500 uppercase tracking-wide mb-1">Nome da regra</p>
+          <p class="text-sm font-semibold text-gray-900">{{ ruleName }}</p>
+        </div>
+
         <RulePreview :rule="store.interpretedRule" :loading="store.loading" />
 
         <div v-if="store.interpretedRule" class="mt-4 pt-4 border-t border-gray-100 space-y-3">
