@@ -87,6 +87,8 @@ let cachedBackendRules = []
 const mapBackendRuleToFrontend = (item) => {
   return {
     id: item.id,
+    nomeRegra: item.nomeRegra || item.nome || item.nome_regra || '',
+    nome: item.nome || item.nomeRegra || item.nome_regra || '',
     codMarca: item.codMarca,
     codCargo: item.codCargo,
     marca: item.descrMarca,
@@ -305,6 +307,8 @@ export const rulesApi = {
       if (!rule) throw new Error('Regra não encontrada')
 
       const previousSnapshot = {
+        nomeRegra: rule.nomeRegra,
+        nome: rule.nome,
         marca: rule.marca,
         cargo: rule.cargo,
         comissao: rule.comissao,
@@ -317,6 +321,8 @@ export const rulesApi = {
       rule.versoesAnteriores = Array.isArray(rule.versoesAnteriores) ? [...rule.versoesAnteriores, previousSnapshot] : [previousSnapshot]
 
       if (ruleData.codMarca !== undefined) rule.codMarca = ruleData.codMarca
+      if (ruleData.nomeRegra !== undefined) rule.nomeRegra = ruleData.nomeRegra
+      if (ruleData.nome !== undefined) rule.nome = ruleData.nome
       if (ruleData.descrMarca !== undefined) rule.marca = ruleData.descrMarca
       if (ruleData.codCargo !== undefined) rule.codCargo = ruleData.codCargo
       if (ruleData.descriCargo !== undefined) rule.cargo = ruleData.descriCargo
@@ -551,6 +557,8 @@ export const rulesApi = {
 
       const previousSnapshot = rule.versoesAnteriores[rule.versoesAnteriores.length - 1]
       rule.marca = previousSnapshot.marca ?? rule.marca
+      rule.nomeRegra = previousSnapshot.nomeRegra ?? previousSnapshot.nome ?? rule.nomeRegra
+      rule.nome = previousSnapshot.nome ?? previousSnapshot.nomeRegra ?? rule.nome
       rule.cargo = previousSnapshot.cargo ?? rule.cargo
       rule.comissao = previousSnapshot.comissao ?? rule.comissao
       rule.data = previousSnapshot.data ?? rule.data
