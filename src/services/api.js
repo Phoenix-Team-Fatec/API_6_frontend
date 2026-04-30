@@ -261,6 +261,22 @@ export const rulesApi = {
     if (USE_BACKEND) {
       try {
         const response = await api.post('/api/rules', rule)
+        const backendRule = response?.data && typeof response.data === 'object'
+          ? mapBackendRuleToFrontend(response.data)
+          : {}
+        const cachedRule = {
+          ...backendRule,
+          nomeRegra: backendRule.nomeRegra || rule.nomeRegra || rule.nome || '',
+          nome: backendRule.nome || rule.nome || rule.nomeRegra || '',
+        }
+
+        if (cachedRule.id !== undefined && cachedRule.id !== null) {
+          cachedBackendRules = [
+            cachedRule,
+            ...cachedBackendRules.filter(r => String(r.id) !== String(cachedRule.id)),
+          ]
+        }
+
         return response
       } catch (error) {
         console.warn('Backend indisponivel para salvamento. Usando mock.', error?.message)

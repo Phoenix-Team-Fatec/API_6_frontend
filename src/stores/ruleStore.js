@@ -78,9 +78,9 @@ export const useRuleStore = defineStore('rule', () => {
 
       const savedRule = {
         ...mergedRule,
+        ...(res.data || {}),
         nomeRegra: trimmedName,
         nome: trimmedName,
-        ...(res.data || {}),
         id: res.data?.id ?? editingRuleId.value,
       }
 
@@ -92,6 +92,7 @@ export const useRuleStore = defineStore('rule', () => {
         total.value += 1
       }
 
+      currentRule.value = savedRule
       interpretedRule.value = null
       currentRuleText.value = ''
       currentRuleName.value = ''
@@ -153,7 +154,15 @@ export const useRuleStore = defineStore('rule', () => {
     currentRule.value = null
     try {
       const res = await rulesApi.getById(id)
-      currentRule.value = res.data
+      const cachedRule = rulesList.value.find(rule => String(rule.id) === String(id))
+      const cachedName = cachedRule?.nomeRegra || cachedRule?.nome || cachedRule?.nome_regra || currentRuleName.value
+      const fetchedName = res.data?.nomeRegra || res.data?.nome || res.data?.nome_regra
+      currentRule.value = {
+        ...(cachedRule || {}),
+        ...(res.data || {}),
+        nomeRegra: fetchedName || cachedName || '',
+        nome: fetchedName || cachedName || '',
+      }
     } catch (err) {
       error.value = 'Regra não encontrada.'
     } finally {
