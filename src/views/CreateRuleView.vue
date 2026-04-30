@@ -40,6 +40,20 @@
         <div class="space-y-4">
           <div>
             <label class="block text-sm font-medium text-gray-700 mb-2">
+              Nome da regra
+              <span class="text-red-500 ml-0.5">*</span>
+            </label>
+            <input
+              v-model="ruleName"
+              type="text"
+              required
+              placeholder="Digite o nome da regra"
+              class="input-field"
+            />
+          </div>
+
+          <div>
+            <label class="block text-sm font-medium text-gray-700 mb-2">
               Texto da regra
               <span class="text-red-500 ml-0.5">*</span>
             </label>
@@ -81,7 +95,7 @@
             <BaseButton
               variant="primary"
               :loading="store.loading"
-              :disabled="ruleText.trim().length < 10"
+              :disabled="ruleText.trim().length < 10 || !ruleName.trim()"
               class="flex-1"
               @click="interpret"
             >
@@ -99,7 +113,7 @@
       </BaseCard>
 
       <!-- Preview card -->
-      <BaseCard title="Pré-visualização">
+      <BaseCard>
         <template #header>
           <div class="flex items-center space-x-2">
             <span class="text-base font-semibold text-gray-900">Pré-visualização</span>
@@ -121,6 +135,14 @@
             </span>
           </div>
         </template>
+
+        <div
+          v-if="ruleName.trim()"
+          class="mb-4 rounded-lg border border-gray-100 bg-gray-50 p-3"
+        >
+          <p class="text-xs font-medium text-gray-500 uppercase tracking-wide mb-1">Nome da regra</p>
+          <p class="text-sm font-semibold text-gray-900">{{ ruleName }}</p>
+        </div>
 
         <RulePreview :rule="store.interpretedRule" :loading="store.loading" />
 
@@ -156,6 +178,7 @@ if (route.query.mode === 'new') {
 }
 
 const ruleText = ref(store.currentRuleText || '')
+const ruleName = ref(store.currentRuleName || '')
 
 const examples = [
   'Vendedores da marca Nike recebem 5% de comissão a partir de março de 2026',
@@ -166,23 +189,30 @@ const examples = [
 let debounceTimer = null
 const onTextChange = () => {
   clearTimeout(debounceTimer)
-  if (ruleText.value.trim().length >= 20) {
+  if (ruleText.value.trim().length >= 20 && ruleName.value.trim()) {
     debounceTimer = setTimeout(() => interpret(), 2000)
   }
 }
 
 const interpret = async () => {
+  if (!ruleName.value.trim()) {
+    store.error = 'Informe o nome da regra antes de interpretar.'
+    return
+  }
   if (ruleText.value.trim().length < 10) return
-  await store.interpretRule(ruleText.value)
+  await store.interpretRule(ruleText.value, ruleName.value)
 }
 
 const useExample = (ex) => {
   ruleText.value = ex
-  interpret()
+  if (ruleName.value.trim()) {
+    interpret()
+  }
 }
 
 const clearText = () => {
   ruleText.value = ''
+  ruleName.value = ''
   store.resetInterpretation()
   clearTimeout(debounceTimer)
 }

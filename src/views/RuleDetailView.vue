@@ -72,10 +72,15 @@
               <h3 class="text-sm font-semibold text-slate-700 uppercase tracking-wide">Dados Estruturados</h3>
             </div>
             <div class="grid grid-cols-2 gap-5">
-              <div v-for="field in fields" :key="field.key" class="space-y-1">
+              <div
+                v-for="field in fields"
+                :key="field.key"
+                class="space-y-1"
+                :class="{ 'col-span-2': field.fullWidth }"
+              >
                 <p class="text-[11px] font-bold text-slate-400 uppercase tracking-widest">{{ field.label }}</p>
                 <p class="text-base font-semibold text-slate-800">
-                  {{ field.format ? field.format(store.currentRule[field.key]) : store.currentRule[field.key] }}
+                  {{ formatFieldValue(field, store.currentRule[field.key]) }}
                 </p>
               </div>
             </div>
@@ -121,7 +126,7 @@
             <div v-for="field in fields" :key="field.key" class="flex items-center justify-between py-2 border-b border-slate-50 last:border-0">
               <span class="text-xs text-slate-400 font-medium">{{ field.label }}</span>
               <span class="text-xs font-semibold text-slate-700">
-                {{ field.format ? field.format(store.currentRule[field.key]) : store.currentRule[field.key] || '—' }}
+                {{ formatFieldValue(field, store.currentRule[field.key]) }}
               </span>
             </div>
           </div>
@@ -181,15 +186,16 @@ const tabs = [
 ]
 
 const fields = [
-  { key: 'marca', label: 'Marca' },
+  { key: 'nomeRegra', label: 'Nome da regra', fullWidth: true },
   { key: 'cargo', label: 'Cargo' },
-  { key: 'comissao', label: 'Comissão', format: (v) => `${v}%` },
+  { key: 'marca', label: 'Marca' },
   { key: 'data', label: 'Data', format: (v) => {
     if (!v) return '—'
     const [y, m] = v.split('-')
     const months = ['', 'Janeiro', 'Fevereiro', 'Março', 'Abril', 'Maio', 'Junho', 'Julho', 'Agosto', 'Setembro', 'Outubro', 'Novembro', 'Dezembro']
     return `${months[parseInt(m)]} de ${y}`
   }},
+  { key: 'comissao', label: 'Comissão', format: (v) => `${v}%` },
 ]
 
 const formattedJson = computed(() => {
@@ -202,6 +208,11 @@ const formattedExplanation = computed(() => {
     .replace(/\*\*(.*?)\*\*/g, '<strong>$1</strong>')
     .replace(/\n/g, '<br />')
 })
+
+const formatFieldValue = (field, value) => {
+  if (value === null || value === undefined || value === '') return '—'
+  return field.format ? field.format(value) : value
+}
 
 const copyJson = async () => {
   await navigator.clipboard.writeText(formattedJson.value)
