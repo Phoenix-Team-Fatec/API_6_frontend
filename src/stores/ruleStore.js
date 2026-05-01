@@ -3,6 +3,7 @@ import { ref, computed } from 'vue'
 import { rulesApi } from '../services/api'
 
 export const useRuleStore = defineStore('rule', () => {
+  const currentRuleName = ref('')
   const currentRuleText = ref('')
   const interpretedRule = ref(null)
   const explanation = ref('')
@@ -19,13 +20,20 @@ export const useRuleStore = defineStore('rule', () => {
   const hasInterpretedRule = computed(() => !!interpretedRule.value)
   const isEditing = computed(() => editingRuleId.value !== null)
 
-  async function interpretRule(text) {
+  async function interpretRule(text, name = currentRuleName.value) {
+    const trimmedName = String(name || '').trim()
+    if (!trimmedName) {
+      error.value = 'Informe o nome da regra antes de interpretar.'
+      return
+    }
+
     loading.value = true
     error.value = null
     try {
       const res = await rulesApi.interpret(text)
-      interpretedRule.value = res.data
+      interpretedRule.value = { ...res.data, nomeRegra: trimmedName, nome: trimmedName }
       explanation.value = res.data.explicacao
+      currentRuleName.value = trimmedName
       currentRuleText.value = text
     } catch (err) {
       error.value = 'Erro ao interpretar a regra. Tente novamente.'
@@ -36,14 +44,23 @@ export const useRuleStore = defineStore('rule', () => {
   }
 
   async function saveRule(ruleData) {
+    const trimmedName = String(ruleData?.nomeRegra || ruleData?.nome || currentRuleName.value).trim()
+    if (!trimmedName) {
+      error.value = 'Informe o nome da regra antes de salvar.'
+      throw new Error('Nome da regra é obrigatório.')
+    }
+
     loading.value = true
     error.value = null
     try {
       const interpreted = interpretedRule.value || {}
       const mergedRule = { ...interpreted, ...ruleData }
       const commissionValue = Number(mergedRule.comissao)
+      currentRuleName.value = trimmedName
 
       const payload = {
+        nomeRegra: trimmedName,
+        nome: trimmedName,
         codMarca: mergedRule.codMarca,
         descrMarca: mergedRule.descrMarca || mergedRule.marca,
         codCargo: mergedRule.codCargo,
@@ -62,6 +79,8 @@ export const useRuleStore = defineStore('rule', () => {
       const savedRule = {
         ...mergedRule,
         ...(res.data || {}),
+        nomeRegra: trimmedName,
+        nome: trimmedName,
         id: res.data?.id ?? editingRuleId.value,
       }
 
@@ -73,8 +92,10 @@ export const useRuleStore = defineStore('rule', () => {
         total.value += 1
       }
 
+      currentRule.value = savedRule
       interpretedRule.value = null
       currentRuleText.value = ''
+      currentRuleName.value = ''
       explanation.value = ''
       editingRuleId.value = null
       return savedRule
@@ -89,10 +110,13 @@ export const useRuleStore = defineStore('rule', () => {
   function startEditingRule(rule) {
     if (!rule || !rule.id) return
     editingRuleId.value = rule.id
+    currentRuleName.value = rule.nomeRegra || rule.nome || rule.nome_regra || ''
     currentRuleText.value = rule.texto_original || ''
     explanation.value = rule.explicacao || ''
     interpretedRule.value = {
       id: rule.id,
+      nomeRegra: rule.nomeRegra || rule.nome || rule.nome_regra || '',
+      nome: rule.nome || rule.nomeRegra || rule.nome_regra || '',
       codMarca: rule.codMarca,
       descrMarca: rule.descrMarca || rule.marca,
       marca: rule.marca,
@@ -130,7 +154,15 @@ export const useRuleStore = defineStore('rule', () => {
     currentRule.value = null
     try {
       const res = await rulesApi.getById(id)
-      currentRule.value = res.data
+      const cachedRule = rulesList.value.find(rule => String(rule.id) === String(id))
+      const cachedName = cachedRule?.nomeRegra || cachedRule?.nome || cachedRule?.nome_regra || currentRuleName.value
+      const fetchedName = res.data?.nomeRegra || res.data?.nome || res.data?.nome_regra
+      currentRule.value = {
+        ...(cachedRule || {}),
+        ...(res.data || {}),
+        nomeRegra: fetchedName || cachedName || '',
+        nome: fetchedName || cachedName || '',
+      }
     } catch (err) {
       error.value = 'Regra não encontrada.'
     } finally {
@@ -264,6 +296,7 @@ export const useRuleStore = defineStore('rule', () => {
           explicacao: updatedRule.explicacao,
           isVigente: updatedRule.isVigente,
         }
+        currentRuleName.value = updatedRule.nomeRegra || updatedRule.nome || updatedRule.nome_regra || currentRuleName.value
         currentRuleText.value = updatedRule.texto_original || currentRuleText.value
         explanation.value = updatedRule.explicacao || explanation.value
       }
@@ -280,11 +313,13 @@ export const useRuleStore = defineStore('rule', () => {
     interpretedRule.value = null
     explanation.value = ''
     currentRuleText.value = ''
+    currentRuleName.value = ''
     editingRuleId.value = null
     error.value = null
   }
 
   return {
+    currentRuleName,
     currentRuleText,
     interpretedRule,
     explanation,
