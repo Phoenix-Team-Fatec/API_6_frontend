@@ -1,7 +1,9 @@
 import axios from 'axios'
 
+const viteEnv = import.meta.env || {}
+
 const api = axios.create({
-  baseURL: import.meta.env.VITE_API_URL || 'http://localhost:8080',
+  baseURL: viteEnv.VITE_API_URL || 'http://localhost:8080',
   timeout: 30000,
   headers: { 'Content-Type': 'application/json' },
 })
@@ -19,10 +21,28 @@ const parseEnvBoolean = (value, defaultValue = false) => {
   return ['true', '1', 'yes', 'on'].includes(String(value).toLowerCase())
 }
 
+export const shouldFallbackToMockForError = (error) => {
+  if (!error?.response) return true
+  const status = Number(error.response.status)
+  return !Number.isFinite(status) || status >= 500
+}
+
+export const resolveRulePersistenceTarget = (editingRuleId, rule = {}) => {
+  if (editingRuleId !== null && editingRuleId !== undefined) {
+    return { mode: 'update', id: editingRuleId }
+  }
+
+  if (rule?.persistedByGenerate && rule?.id !== null && rule?.id !== undefined) {
+    return { mode: 'update', id: rule.id }
+  }
+
+  return { mode: 'create', id: null }
+}
+
 // Flags de ambiente para alternar entre mock e backend.
-const USE_MOCK = parseEnvBoolean(import.meta.env.VITE_USE_MOCK, true)
-const USE_BACKEND = parseEnvBoolean(import.meta.env.VITE_USE_BACKEND, true)
-const USE_AI = parseEnvBoolean(import.meta.env.VITE_USE_AI, true)
+const USE_MOCK = parseEnvBoolean(viteEnv.VITE_USE_MOCK, true)
+const USE_BACKEND = parseEnvBoolean(viteEnv.VITE_USE_BACKEND, true)
+const USE_AI = parseEnvBoolean(viteEnv.VITE_USE_AI, true)
 
 // Mock data para desenvolvimento
 const mockRules = [
@@ -104,6 +124,65 @@ const mapBackendRuleToFrontend = (item) => {
     versoesAnteriores: item.versoesAnteriores,
     isVigente: item.isVigente ?? true
   }
+}
+
+export const mapGeneratedRuleResponseToFrontend = (payload) => {
+  const firstRule = Array.isArray(payload?.rules) ? payload.rules[0] : null
+  const firstException = Array.isArray(payload?.exceptions) ? payload.exceptions[0] : null
+
+  if (firstRule) {
+    const mapped = mapBackendRuleToFrontend(firstRule)
+    return {
+      ...mapped,
+      tipo: payload.tipo,
+      explicacao: payload.justificativa || mapped.explicacao,
+      generatedByAi: true,
+      persistedByGenerate: true,
+      generatedRules: payload.rules || [],
+      generatedExceptions: payload.exceptions || [],
+    }
+  }
+
+  return {
+    tipo: payload?.tipo || '',
+    explicacao: payload?.justificativa || '',
+    generatedByAi: true,
+    persistedByGenerate: Boolean(firstException),
+    generatedRules: payload?.rules || [],
+    generatedExceptions: payload?.exceptions || [],
+  }
+}
+
+const parseNumericCode = (value, fieldName) => {
+  const parsed = Number(value)
+  if (!Number.isFinite(parsed)) {
+    throw new Error(`${fieldName} invalido para calculo de comissao.`)
+  }
+  return parsed
+}
+
+export const buildCommissionCalculationPayload = (targetType, month, item = {}) => {
+  if (!month) {
+    throw new Error('Informe o mes de referencia para calcular a comissao.')
+  }
+
+  if (targetType === 'employee') {
+    const matricula = item.matricula || item.id
+    if (!matricula) throw new Error('Matricula obrigatoria para calcular funcionario.')
+    return { month, targetType: 'EMPLOYEE', matricula: String(matricula) }
+  }
+
+  if (targetType === 'store') {
+    const codLoja = item.codLoja || item.codigo || item.id
+    return { month, targetType: 'STORE', codLoja: parseNumericCode(codLoja, 'Codigo da loja') }
+  }
+
+  if (targetType === 'brand') {
+    const codMarca = item.codMarca || item.codigo || item.id
+    return { month, targetType: 'BRAND', codMarca: parseNumericCode(codMarca, 'Codigo da marca') }
+  }
+
+  throw new Error('Tipo de alvo invalido para calculo de comissao.')
 }
 
 const applyLocalFilters = (rules, params = {}) => {
@@ -228,11 +307,11 @@ export const rulesApi = {
   async interpret(text) {
     if (USE_AI) {
       try {
-        const response = await api.post('/rules/interpret', { texto: text })
-        return response
+        const response = await api.post('/api/rules/generate', { prompt: text })
+        return { data: mapGeneratedRuleResponseToFrontend(response.data) }
       } catch (error) {
         console.warn('Backend indisponivel para interpretacao. Usando mock.', error?.message)
-        if (!USE_MOCK) {
+        if (!USE_MOCK || !shouldFallbackToMockForError(error)) {
           throw error
         }
       }
@@ -280,7 +359,7 @@ export const rulesApi = {
         return response
       } catch (error) {
         console.warn('Backend indisponivel para salvamento. Usando mock.', error?.message)
-        if (!USE_MOCK) {
+        if (!USE_MOCK || !shouldFallbackToMockForError(error)) {
           throw error
         }
       }
@@ -311,7 +390,7 @@ export const rulesApi = {
         return { data: updatedRule }
       } catch (error) {
         console.warn('Backend indisponivel para atualização. Usando mock.', error?.message)
-        if (!USE_MOCK) {
+        if (!USE_MOCK || !shouldFallbackToMockForError(error)) {
           throw error
         }
       }
@@ -430,7 +509,7 @@ export const rulesApi = {
         return { data: mapBackendRuleToFrontend(response.data) }
       } catch (error) {
         console.warn('Backend indisponivel para busca por ID. Usando mock.', error?.message)
-        if (!USE_MOCK) {
+        if (!USE_MOCK || !shouldFallbackToMockForError(error)) {
           throw error
         }
       }
@@ -627,6 +706,13 @@ export const rulesApi = {
     }
 
     throw new Error('Restore de regra indisponivel: backend e mock estao desativados.')
+  }
+}
+
+export const commissionApi = {
+  async calculate(targetType, month, item) {
+    const payload = buildCommissionCalculationPayload(targetType, month, item)
+    return api.post('/api/commission/calculate', payload)
   }
 }
 
