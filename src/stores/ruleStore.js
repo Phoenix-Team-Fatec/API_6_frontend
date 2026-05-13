@@ -1,6 +1,6 @@
 import { defineStore } from 'pinia'
 import { ref, computed } from 'vue'
-import { rulesApi } from '../services/api'
+import { resolveRulePersistenceTarget, rulesApi } from '../services/api'
 
 export const useRuleStore = defineStore('rule', () => {
   const currentRuleName = ref('')
@@ -35,6 +35,10 @@ export const useRuleStore = defineStore('rule', () => {
       explanation.value = res.data.explicacao
       currentRuleName.value = trimmedName
       currentRuleText.value = text
+      if (res.data?.persistedByGenerate && res.data?.id) {
+        editingRuleId.value = res.data.id
+        currentRule.value = { ...res.data, nomeRegra: trimmedName, nome: trimmedName }
+      }
     } catch (err) {
       error.value = 'Erro ao interpretar a regra. Tente novamente.'
       throw err
@@ -72,8 +76,9 @@ export const useRuleStore = defineStore('rule', () => {
         isVigente: mergedRule.isVigente,
       }
 
-      const res = isEditing.value
-        ? await rulesApi.update(editingRuleId.value, payload)
+      const persistenceTarget = resolveRulePersistenceTarget(editingRuleId.value, mergedRule)
+      const res = persistenceTarget.mode === 'update'
+        ? await rulesApi.update(persistenceTarget.id, payload)
         : await rulesApi.save(payload)
 
       const savedRule = {
