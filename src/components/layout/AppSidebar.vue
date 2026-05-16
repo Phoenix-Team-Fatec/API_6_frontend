@@ -35,7 +35,7 @@
         </Transition>
         <div class="space-y-0.5">
           <button
-            v-for="item in mainNav"
+            v-for="item in visibleMainNav"
             :key="item.to"
             class="nav-item-btn"
             :class="{ 'nav-item-active': isItemActive(item) }"
@@ -75,7 +75,7 @@
         </Transition>
         <div class="space-y-0.5">
           <button
-            v-for="item in toolsNav"
+            v-for="item in visibleToolsNav"
             :key="item.label"
             class="nav-item-btn nav-item-dimmed"
             :title="collapsed ? item.label : undefined"
@@ -110,7 +110,7 @@
         <Transition name="label-fade">
           <div v-if="!collapsed" class="min-w-0 flex-1">
             <p class="text-xs font-semibold text-white/90 truncate leading-tight">{{ authStore.userName }}</p>
-            <p class="text-[10px] text-slate-500 truncate mt-0.5">{{ authStore.userEmail }}</p>
+            <p class="text-[10px] text-slate-500 truncate mt-0.5">{{ authStore.userRoleLabel }} · {{ authStore.userEmail }}</p>
           </div>
         </Transition>
 
@@ -146,9 +146,10 @@
 </template>
 
 <script setup>
-import { ref } from 'vue'
+import { computed, ref } from 'vue'
 import { useRouter, useRoute } from 'vue-router'
 import { useAuthStore } from '../../stores/authStore'
+import { ROLES } from '../../stores/accessStore'
 import { h } from 'vue'
 
 defineProps({ collapsed: Boolean })
@@ -197,10 +198,22 @@ const IconCommission = {
     h('path', { 'stroke-linecap': 'round', 'stroke-linejoin': 'round', 'stroke-width': '1.8', d: 'M12 8c-1.657 0-3-1.343-3-3s1.343-3 3-3 3 1.343 3 3-1.343 3-3 3zm0 2c2.21 0 4 1.79 4 4v2H8v-2c0-2.21 1.79-4 4-4zm6 6H6v4h12v-4z' }),
   ]),
 }
+const IconDashboard = {
+  render: () => h('svg', { fill: 'none', viewBox: '0 0 24 24', stroke: 'currentColor' }, [
+    h('path', { 'stroke-linecap': 'round', 'stroke-linejoin': 'round', 'stroke-width': '1.8', d: 'M4 13h6V4H4v9zm10 7h6V4h-6v16zM4 20h6v-5H4v5z' }),
+  ]),
+}
+const IconUsers = {
+  render: () => h('svg', { fill: 'none', viewBox: '0 0 24 24', stroke: 'currentColor' }, [
+    h('path', { 'stroke-linecap': 'round', 'stroke-linejoin': 'round', 'stroke-width': '1.8', d: 'M17 20h5v-2a4 4 0 00-3-3.87M9 20H4v-2a4 4 0 013-3.87M15 7a3 3 0 11-6 0 3 3 0 016 0zM17 11a3 3 0 100-6' }),
+  ]),
+}
 
 const mainNav = [
+  { to: '/admin', label: 'Dashboard', icon: IconDashboard, exact: true, roles: [ROLES.ADMIN] },
+  { to: '/admin/users', label: 'Usuarios', icon: IconUsers, exact: true, roles: [ROLES.ADMIN] },
   { to: '/rules', label: 'Regras', icon: IconRules, exact: true },
-  { to: '/rules/new', label: 'Nova Regra', icon: IconPlus, exact: true },
+  { to: '/rules/new', label: 'Nova Regra', icon: IconPlus, exact: true, roles: [ROLES.ADMIN, ROLES.MANAGER] },
   { to: '/commission', label: 'Comissão', icon: IconCommission, exact: true },
 ]
 
@@ -208,6 +221,10 @@ const toolsNav = [
   { label: 'Análises', icon: IconChart },
   { label: 'IA Insights', icon: IconAI },
 ]
+
+const canSeeItem = (item) => !item.roles || authStore.hasAnyRole(item.roles)
+const visibleMainNav = computed(() => mainNav.filter(canSeeItem))
+const visibleToolsNav = computed(() => toolsNav.filter(canSeeItem))
 
 const logout = () => {
   authStore.logout()

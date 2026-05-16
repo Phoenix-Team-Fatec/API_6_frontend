@@ -197,7 +197,7 @@ const handleLogin = async () => {
   validateField('email'); validateField('password')
   if (errors.email || errors.password) return
   const ok = await authStore.login(form.email, form.password)
-  if (ok) router.push('/rules')
+  if (ok) router.push(authStore.canAccessAdminDashboard ? '/admin' : '/rules')
 }
 </script>
 

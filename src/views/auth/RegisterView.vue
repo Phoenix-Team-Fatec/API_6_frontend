@@ -184,7 +184,7 @@
         <div class="left-hero">
           <div class="hero-eyebrow">
             <span class="hero-dot" />
-            Junte-se a centenas de analistas
+            Feito para gerentes que precisam agir rapido
           </div>
           <h1 class="hero-title">
             Crie regras inteligentes em

@@ -47,6 +47,7 @@
                 </svg>
               </button>
               <button
+                v-if="canManage"
                 class="text-gray-400 hover:text-blue-600 transition-colors p-1 rounded"
                 @click="emit('edit', rule)"
                 aria-label="Editar regra"
@@ -57,6 +58,7 @@
                 </svg>
               </button>
               <button
+                v-if="canManage"
                 :class="[
                   'transition-colors p-1 rounded',
                   rule.isVigente
@@ -72,6 +74,7 @@
                 </svg>
               </button>
               <button
+                v-if="canManage"
                 class="text-gray-400 hover:text-red-600 transition-colors p-1 rounded"
                 @click="emit('delete', rule)"
                 aria-label="Excluir regra"
@@ -91,7 +94,8 @@
 
 <script setup>
 const props = defineProps({
-  rules: { type: Array, default: () => [] }
+  rules: { type: Array, default: () => [] },
+  canManage: { type: Boolean, default: true },
 })
 
 const emit = defineEmits(['select', 'sort', 'delete', 'toggleVigente', 'edit'])
