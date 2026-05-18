@@ -34,7 +34,7 @@
         </div>
         <div class="hidden md:block">
           <p class="text-xs font-semibold text-slate-800 leading-none">{{ authStore.userName }}</p>
-          <p class="text-[10px] text-slate-400 mt-0.5">{{ authStore.user?.role }}</p>
+          <p class="text-[10px] text-slate-400 mt-0.5">{{ authStore.userRoleLabel }}</p>
         </div>
       </div>
     </div>
@@ -52,7 +52,7 @@ const route = useRoute()
 const authStore = useAuthStore()
 
 const pageTitle = computed(() => {
-  const titles = { RulesList: 'Regras de Negócio', CreateRule: 'Nova Regra', ConfirmRule: 'Confirmar Regra', RuleDetail: 'Detalhe da Regra', RulesTrash: 'Lixeira' }
+  const titles = { AdminDashboard: 'Dashboard Admin', AdminUsers: 'Usuarios e Acessos', AccessDenied: 'Acesso Restrito', RulesList: 'Regras de Negócio', CreateRule: 'Nova Regra', ConfirmRule: 'Confirmar Regra', RuleDetail: 'Detalhe da Regra', RulesTrash: 'Lixeira', Commission: 'Comissao', CommissionDetails: 'Detalhes da Comissao', CommissionCalculate: 'Calcular Comissao' }
   return titles[route.name] || 'Dashboard'
 })
 </script>

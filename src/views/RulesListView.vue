@@ -6,7 +6,7 @@
         <h1 class="page-title">Regras de Negócio</h1>
         <p class="page-subtitle">Gerencie e monitore todas as regras cadastradas</p>
       </div>
-      <RouterLink to="/rules/new?mode=new" @click="store.resetInterpretation()">
+      <RouterLink v-if="authStore.canCreateRules" to="/rules/new?mode=new" @click="store.resetInterpretation()">
         <button class="btn-primary">
           <svg class="w-4 h-4 mr-2" fill="none" viewBox="0 0 24 24" stroke="currentColor">
             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4" />
@@ -56,14 +56,14 @@
           </svg>
         </div>
         <h3 class="text-base font-semibold text-slate-700 mb-1">Nenhuma regra encontrada</h3>
-        <p class="text-sm text-slate-400 mb-5">Crie sua primeira regra com auxílio da IA</p>
-        <RouterLink to="/rules/new?mode=new" @click="store.resetInterpretation()">
+        <p class="text-sm text-slate-400 mb-5">{{ emptyStateMessage }}</p>
+        <RouterLink v-if="authStore.canCreateRules" to="/rules/new?mode=new" @click="store.resetInterpretation()">
           <button class="btn-primary">Criar Primeira Regra</button>
         </RouterLink>
       </div>
 
       <!-- Table -->
-      <RulesTable v-else :rules="paginatedRules" @select="goToDetail" @sort="onSort" @delete="requestDelete" @toggleVigente="requestToggleVigente" @edit="requestEdit" />
+      <RulesTable v-else :rules="paginatedRules" :can-manage="authStore.canCreateRules" @select="goToDetail" @sort="onSort" @delete="requestDelete" @toggleVigente="requestToggleVigente" @edit="requestEdit" />
 
       <!-- Pagination -->
       <div v-if="store.rulesList.length > 0" class="px-5 py-3 border-t border-slate-100 flex items-center justify-between bg-slate-50/50">
@@ -106,12 +106,14 @@
 import { onMounted, computed, ref, watch } from 'vue'
 import { useRouter } from 'vue-router'
 import { useRuleStore } from '../stores/ruleStore'
+import { useAuthStore } from '../stores/authStore'
 import RulesTable from '../components/table/RulesTable.vue'
 import FiltersBar from '../components/table/FiltersBar.vue'
 import ConfirmationModal from '../components/common/ConfirmationModal.vue'
 
 const router = useRouter()
 const store = useRuleStore()
+const authStore = useAuthStore()
 const currentPage = ref(1)
 const perPage = 10
 const showDeleteModal = ref(false)
@@ -133,6 +135,7 @@ const canGoNext = computed(() => currentPage.value < totalPages.value)
 
 const startItem = computed(() => (store.rulesList.length ? (currentPage.value - 1) * perPage + 1 : 0))
 const endItem = computed(() => Math.min(currentPage.value * perPage, store.rulesList.length))
+const emptyStateMessage = computed(() => authStore.canCreateRules ? 'Crie sua primeira regra com auxílio da IA' : 'Nenhuma regra disponivel para consulta')
 
 watch(() => store.rulesList.length, () => {
   if (currentPage.value > totalPages.value) {
@@ -172,6 +175,7 @@ const deleteConfirmationMessage = computed(() => {
 })
 
 const requestDelete = (rule) => {
+  if (!authStore.canCreateRules) return
   ruleToDelete.value = rule
   showDeleteModal.value = true
 }
@@ -217,11 +221,13 @@ const vigenteConfirmationMessage = computed(() => {
 })
 
 const requestToggleVigente = (rule) => {
+  if (!authStore.canCreateRules) return
   ruleToToggleVigente.value = rule
   showVigenteModal.value = true
 }
 
 const requestEdit = async (rule) => {
+  if (!authStore.canCreateRules) return
   try {
     await store.fetchRuleById(rule.id)
     store.startEditingRule(store.currentRule || rule)

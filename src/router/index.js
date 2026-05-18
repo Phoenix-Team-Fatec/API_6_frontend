@@ -1,5 +1,6 @@
 import { createRouter, createWebHistory } from 'vue-router'
 import { useAuthStore } from '../stores/authStore'
+import { ROLES } from '../stores/accessStore'
 
 const routes = [
   { path: '/', redirect: '/rules' },
@@ -20,8 +21,11 @@ const routes = [
     component: () => import('../layouts/AppLayout.vue'),
     meta: { requiresAuth: true },
     children: [
+      { path: 'admin', name: 'AdminDashboard', component: () => import('../views/AdminDashboardView.vue'), meta: { roles: [ROLES.ADMIN] } },
+      { path: 'admin/users', name: 'AdminUsers', component: () => import('../views/AdminUsersView.vue'), meta: { roles: [ROLES.ADMIN] } },
+      { path: 'forbidden', name: 'AccessDenied', component: () => import('../views/AccessDeniedView.vue') },
       { path: 'rules', name: 'RulesList', component: () => import('../views/RulesListView.vue') },
-      { path: 'rules/new', name: 'CreateRule', component: () => import('../views/CreateRuleView.vue') },
+      { path: 'rules/new', name: 'CreateRule', component: () => import('../views/CreateRuleView.vue'), meta: { roles: [ROLES.ADMIN, ROLES.MANAGER] } },
       { path: 'rules/trash', name: 'RulesTrash', component: () => import('../views/RulesTrashView.vue') },
       { path: 'rules/confirm', name: 'ConfirmRule', component: () => import('../views/ConfirmRuleView.vue') },
       { path: 'rules/:id', name: 'RuleDetail', component: () => import('../views/RuleDetailView.vue') },
@@ -42,7 +46,9 @@ router.beforeEach((to, from, next) => {
   if (to.meta.requiresAuth && !authStore.isAuthenticated) {
     next('/login')
   } else if (to.meta.guest && authStore.isAuthenticated) {
-    next('/rules')
+    next(authStore.canAccessAdminDashboard ? '/admin' : '/rules')
+  } else if (to.meta.roles && !authStore.hasAnyRole(to.meta.roles)) {
+    next('/forbidden')
   } else {
     next()
   }
